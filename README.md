@@ -2,7 +2,7 @@
 
 ![Cool otter guy](./assets/csuMbOtter.jpeg)
 
-Repo for the experiment code regarding a super smash bros ultimate cognitive research study being done at [CSU Monterey Bay](https://csumb.edu/), where we are attempting to observe various cognitive capabilities in relationship to players of super smash brothers. 
+Experiment code for a 'Super Smash Bros Ultimate', cognitive research study, where we are attempting to observe various cognitive capabilities in relationship to players of super smash brothers. This experiment is being conducted at [CSU Monterey Bay](https://csumb.edu/).
 
 Experiments are built on top of the [psytoolkit](https://www.psytoolkit.org/). 
 
