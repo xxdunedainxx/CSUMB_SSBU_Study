@@ -1,5 +1,7 @@
 # CSU Monterey Bay - Super Smah Bros Ultimate Cognitive Research
 
+![Cool otter guy](./assets/csuMbOtter.PNG)
+
 Repo for the experiment code regarding a super smash bros ultimate cognitive research study being done at [CSU Monterey Bay](https://csumb.edu/)), where we are attempting to observe various cognitive capabilities in relationship to various players of super smash brothers. 
 
 Experiments are built on top of the [psytoolkit](https://www.psytoolkit.org/). 

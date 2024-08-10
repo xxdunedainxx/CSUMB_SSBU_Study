@@ -1,16 +1,17 @@
 # CSUMB SSBU Study Psytoolkit
 
+This section is an overview of psytoolkit as it is relevant to this research study. 
+
 I'll defer to [psytoolkit's site](https://www.psytoolkit.org/) for information regarding the tool, but it is effectively a software platform for building & running various common cognitive tests. 
 
 ## Experiments Overview 
 
 **NOTE**: These experiments utilize the `.py` file extension, commonly used for python syntax highlighting. THESE ARE **NOT** python scripts. I simply named them as such in order to exploit python syntax highlighting, since the psytoolkit scripting language shared some commonalities with python. 
 
-* [Go No Go](GoNoGo.py) - 
-* [Posner Cue Task](PosnerCueTask.py)
-* [Simple reaction task](SimpleReactionTaskk.py)
-* [Task Switching](TaskSwitching.py)
-
+* [Go No Go](GoNoGo.py) - Test inhibitory control in participants, see more [here](https://en.wikipedia.org/wiki/Inhibitory_control)
+* [Posner Cue Task](PosnerCueTask.py)- See [here](https://en.wikipedia.org/wiki/Posner_cueing_task)
+* [Simple reaction task](SimpleReactionTaskk.py) - Test participant reaction time 
+* [Task Switching](TaskSwitching.py) - Task switching, or set-shifting, is an executive function that involves the ability to unconsciously shift attention between one task and another. See more information [here](https://en.wikipedia.org/wiki/Task_switching_(psychology))
 
 ## Running Psytoolkit experiments
 
