@@ -14,6 +14,7 @@
   *  2. At the end once the data is ready to show (this will trigger the listener at the end of the experiment)
   * 
   * Update: July 23, 2024 - Auto-full screen, CSV File named per experiment, X-Axis collumn names 
+  * Update: November 13, 2024 - Automated stats CSV generation (mean, median, mode, peak values, %nogo)
 */ 
 
 /*
@@ -272,10 +273,13 @@ function initCustomDataLoader(){
         originalShowDataHtml();
 
         // Take output data and create the CSV for download 
-        outputDataToCSV(addCollumnsToOutputData(EXPERIMENT_NAME, outputdata), EXPERIMENT_NAME);
+        outputDataToCSV(
+          addCollumnsToOutputData(EXPERIMENT_NAME, outputdata), 
+          EXPERIMENT_NAME
+        );
     }
 
-    // not needed? addFullScreenElement();
+    // @Deprecated -- not needed? addFullScreenElement();
 }
 </script>
 <script>

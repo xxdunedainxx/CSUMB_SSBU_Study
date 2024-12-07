@@ -9,7 +9,13 @@
   *  2. At the end once the data is ready to show (this will trigger the listener at the end of the experiment)
   * 
   * Update: July 23, 2024 - Auto-full screen, CSV File named per experiment, X-Axis collumn names 
+  * Update: December 6, 2024:
+    - Add Versioning to HTML Title
+    - Automated stats upon experiment completion 
 */ 
+
+// Semantic versioning for the app 
+VERSION="1.0.1"
 
 /*
  * Simple utilityy function for downloading a document of a particular content type. 
@@ -137,15 +143,10 @@ function addFullScreenElement(){
   document.getElementById('showdata').innerHTML="<button onclick='fullScreen()'>fullscreen</button>"
 }
 
-/*
- * Add collumn identifiers based on experiment name 
- *
- *
- */
-function addCollumnsToOutputData(experimentName, data) {
-  
-  // Contains mapping from experiments --> column names 
+// Contains mapping from experiments --> column names 
+function getExperimentToColumnNamesMap(experimentName){
   var experimentToColumnNamesMapping = {
+
     /*
       1 - Name of task: go or nogo / training or trial
       2 - The response speed (in nogo trials, this is 2000, the timeout)
@@ -222,12 +223,200 @@ function addCollumnsToOutputData(experimentName, data) {
     ],
   }
 
-  var collumnsAsString = experimentToColumnNamesMapping[experimentName].join(",")
+  return experimentToColumnNamesMapping[experimentName]
+}
+
+/**
+  * If a user responds to no-go, count towards % of no-goes 
+  * Remember JS is pass by reference for tables, s
+  * so we can pass original data table and modify it!
+*/
+function goNoGoPercent(data, originalDataCollection, dataCategory) {
+  console.log(`${dataCategory} -- Go no go custom stat!! -- ${data} -- ${JSON.stringify(originalDataCollection)}`)
+  
+  // For no-gos, we want to track % of go vs no goes 
+  if(dataCategory.substr(0,4) == 'nogo'){
+    console.log("This is a no go trial")
+    var keyToUse = `CUSTOM_${dataCategory}_NoGoPercentCalculator`
+
+    if(keyToUse in originalDataCollection == false){
+      originalDataCollection[keyToUse] = {
+        "totalTrials" : 0,
+        "totalMisses" : 0,
+        "percentMisses":0
+      }
+    }
+
+    originalDataCollection[keyToUse]["totalTrials"] += 1
+    if(data == 1){
+      originalDataCollection[keyToUse]["totalMisses"] += 1
+    }
+
+    originalDataCollection[keyToUse]["percentMisses"] = originalDataCollection[keyToUse]["totalMisses"] / originalDataCollection[keyToUse]["totalTrials"] 
+  }
+  console.log(originalDataCollection)
+  return originalDataCollection
+}
+
+// Custom stats thats effectively a 'null' function. Does nothing 
+// Intended for stats we want to skip. Not sure if we'll need or not. 
+function noOpSkipFunction(data, originalDataCollection, dataCategory){}
+
+/**
+  * Simple mapping for 'custom' statistics calculations.  
+  *
+  *
+*/ 
+function customStatsLogic(experimentName) {
+      var customLogicMapper = {
+        "GoNoGo" : {}
+      }
+
+      customLogicMapper["GoNoGo"]["ErrorStatus"] = (data, originalDataCollection, dataCategory) => goNoGoPercent(data, originalDataCollection, dataCategory)
+
+      return customLogicMapper[experimentName]
+}
+
+/**
+  * Generates a secondary CSV with specified experiment stats.
+  * By default will include peak vals (of test vs real). And means for test and real. 
+  *
+  */
+function calculateAutomatedStats(experimentName, data){
+
+  var columnNameMapping = getExperimentToColumnNamesMap(experimentName)
+
+  var dataFormatted = data.split("\n")
+  
+  var customStatisLogic = customStatsLogic(experimentName)
+
+  console.log(customStatsLogic)
+
+  // Stores the resultant data in a nice hash table :)
+  var dataToUse = {}
+
+  for(var i = 0; i < dataFormatted.length; i++){
+    // Grab the row 
+    var splitUpRow = dataFormatted[i].replace(/\s{2,}/g, ' ').split(" ")
+
+    // Get the 'category' of data
+    var dataCategory = splitUpRow[0].replaceAll("\"", "")
+    if(dataCategory === ""){
+      console.log("Empty string/garbage data, skipping..");
+    } else {
+      for(var j = 1; j < columnNameMapping.length; j++){
+        var dataKey = `${dataCategory}_${columnNameMapping[j]}`
+        var dataToAddCastToInt = parseInt(splitUpRow[j])
+
+        if(columnNameMapping[j] in customStatisLogic == true){
+          console.log(`Custom stats logic handler: ${columnNameMapping[j]} -- ${dataToAddCastToInt}`)
+          dataToUse = customStatisLogic[columnNameMapping[j]](
+            dataToAddCastToInt,
+            dataToUse,
+            dataCategory
+          )
+        } else {
+
+          if(dataKey in dataToUse == false) {
+            console.log("Add entry to dataToUse table..")
+            dataToUse[dataKey] = {
+              "mean" : 0,
+              "peakVal": null,
+              "minVal" : null,
+              "totalEntries" : 0
+            }
+          }
+
+          // Actual mean is calculated later. This is just to store the total.
+          dataToUse[dataKey]["mean"] += dataToAddCastToInt
+          dataToUse[dataKey]["totalEntries"] += 1
+
+          if(dataToUse[dataKey]["peakVal"] == null || 
+            dataToUse[dataKey]["peakVal"] < dataToAddCastToInt){
+            dataToUse[dataKey]["peakVal"] = dataToAddCastToInt
+          }
+
+          if(dataToUse[dataKey]["minVal"] == null || 
+            dataToUse[dataKey]["minVal"] > dataToAddCastToInt){
+            dataToUse[dataKey]["minVal"] = dataToAddCastToInt
+          }
+
+        }
+
+      }
+    }
+  }
+
+  // Actually calculate the means 
+  for (const key of Object.keys(dataToUse)) {
+    if("mean" in dataToUse[key]){
+      // dataToUse[key]["originalMean"] = dataToUse[key]["mean"] 
+      dataToUse[key]["mean"] = (dataToUse[key]["mean"] / dataToUse[key]["totalEntries"])
+    }
+  }
+
+
+  return dataToUse
+}
+
+/**
+  * Take data from 'calculateAutomatedStats' and format into a CSV. 
+  * Afterwards push to client for download
+  *
+*/
+function createAutomatedStatsCSV(statsData, experimentName) {
+
+
+  var csv = [
+    "",
+    ""
+  ]
+
+  var statsCsvName = `${experimentName}_stats`
+
+  // Bad this is hardcoded but o well.. 
+  // CSVs[normalStatsKey] = "mean, minVal, peakVal, totalEntries\n"
+
+  for (const key of Object.keys(statsData)) {
+    // csv[0] += (Object.keys(statsData[key]).join(",") + "\n")
+    var keysToAdd = ""
+    var valsToAdd = ""
+    for(const dataKey of Object.keys(statsData[key])){
+      keysToAdd += `${key}_${dataKey},`
+      valsToAdd += `${statsData[key][dataKey]},`
+    }
+
+    csv[0] += keysToAdd
+    csv[1] += valsToAdd
+  }
+
+  console.log(csv)
+  
+  var finalCsv = (csv[0] + "\n" + csv[1])
+
+  downloadBlob(
+    finalCsv, 
+    generateOutputFileName(statsCsvName), 
+    'text/csv;charset=utf-8;'
+  )  
+}
+
+/*
+ * Add collumn identifiers based on experiment name 
+ */
+function addCollumnsToOutputData(experimentName, data) {
+  
+  var experimentColumnMapping = getExperimentToColumnNamesMap(experimentName)
+
+  var collumnsAsString = experimentColumnMapping.join(",")
 
   return `${collumnsAsString}\n${data}`
 
 }
 
+function addVersion(version) {
+  document.getElementsByTagName("title")[0].innerText = `v${version}; CSUMB SSB Study`
+}
 
 /**
   * Injects a custom welcome image :)
@@ -253,18 +442,46 @@ function loadWelcomeImageBitMap(){
   * Basically it bootstraps on top of the existing 'showdata_html' event, 
   *   and will take the data and automatically convert it to a CSV and download it. 
 */
-function initCustomDataLoader(){
+function initCustomDataLoader(experimentName){
     // Store the original method in a local var. 
     var originalShowDataHtml = showdata_html;
-    var EXPERIMENT_NAME = ""
+
+    // Stash for later in the callback..
+    var EXPERIMENT_NAME = experimentName;
 
     // Bootstrap listener on top of the 'showdata_html' psytoolkit javascript method. 
     showdata_html = function() {
         originalShowDataHtml();
 
         // Take output data and create the CSV for download 
-        outputDataToCSV(addCollumnsToOutputData(EXPERIMENT_NAME, outputdata), EXPERIMENT_NAME);
+        outputDataToCSV(
+          addCollumnsToOutputData(EXPERIMENT_NAME, outputdata), 
+          EXPERIMENT_NAME
+        );
+
+        // Stash the stats. Pass on to another function for creating the CSVs 
+        var automatedStats = calculateAutomatedStats(
+          EXPERIMENT_NAME,
+          outputdata
+        );
     }
 
-    // not needed? addFullScreenElement();
+    // @Deprecated -- not needed? addFullScreenElement();
+}
+
+
+/**
+  * This is effectively the 'main' entry point of the plugin. 
+  * Only this function should be called in the psytoolkit scripts. 
+  *
+*/
+function loadZehPlugin(experimentName) {
+  // Adds  the version 
+  addVersion(VERSION);
+
+  // Laod the custom welcome image 
+  loadWelcomeImageBitMap();
+
+  // Add our custom data loader callback 
+  initCustomDataLoader(experimentName);
 }
