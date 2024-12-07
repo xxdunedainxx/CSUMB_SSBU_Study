@@ -81,3 +81,7 @@ Ref: https://www.psytoolkit.org/experiment-library/cueing.html
 * 6 - cue validity as number (1=cued, 0=uncued)
 * 7 - Response time (ms)
 * 8 - Status (1=correct, 2=wrong, 3=timeout)
+
+## Versioning 
+
+Versioning has been added as of 12/6/2024. Versions can be found in the [versions folder](versions/README.md). This is to simply keep me sane and have backups of previous versions in case I (Zach) mess something up :D 
