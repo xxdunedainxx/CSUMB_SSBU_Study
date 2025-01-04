@@ -12,10 +12,11 @@
   * Update: December 6, 2024:
     - Add Versioning to HTML Title
     - Automated stats upon experiment completion 
+  * Update: January 3, 2025 - fix automated stats bug? 
 */ 
 
 // Semantic versioning for the app 
-VERSION="1.0.1"
+VERSION="1.0.2"
 
 /*
  * Simple utilityy function for downloading a document of a particular content type. 
@@ -269,7 +270,10 @@ function noOpSkipFunction(data, originalDataCollection, dataCategory){}
 */ 
 function customStatsLogic(experimentName) {
       var customLogicMapper = {
-        "GoNoGo" : {}
+        "GoNoGo" : {},
+        "PosnerCue" : {},
+        "TaskSwitching" : {},
+        "SimpleReaction" : {}
       }
 
       customLogicMapper["GoNoGo"]["ErrorStatus"] = (data, originalDataCollection, dataCategory) => goNoGoPercent(data, originalDataCollection, dataCategory)
@@ -464,11 +468,12 @@ function initCustomDataLoader(experimentName){
           EXPERIMENT_NAME,
           outputdata
         );
+
+        createAutomatedStatsCSV(automatedStats, EXPERIMENT_NAME);
     }
 
     // @Deprecated -- not needed? addFullScreenElement();
 }
-
 
 /**
   * This is effectively the 'main' entry point of the plugin. 
@@ -476,6 +481,8 @@ function initCustomDataLoader(experimentName){
   *
 */
 function loadZehPlugin(experimentName) {
+  console.log("INIT PSYTOOLKIT PLUGIN")
+
   // Adds  the version 
   addVersion(VERSION);
 

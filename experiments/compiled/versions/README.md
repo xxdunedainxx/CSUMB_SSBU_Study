@@ -2,3 +2,4 @@
 
 * v1 - initial version of the experiments
 * v1.0.1 - simple updates to experiments with automated statistics. 
+* v1.0.2 - fix automated stats bug 
