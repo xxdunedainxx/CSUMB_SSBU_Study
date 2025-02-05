@@ -6,7 +6,7 @@ This section is an overview of (hopefully) anything you would need to know about
 
 ## Important note regarding experiment modification 
 
-These experiments have been slightly modified, after psytoolkit transpilation. This is due to the fact that there were some features not available in the pre-provided experiment, of which we built some basic mods for. For more information, see [here](mods/README.md). 
+These experiments have been slightly modified, after psytoolkit transpilation. This is due to the fact that there were some features not available in the pre-provided experiment, of which we built some basic mods for. For more information, see [here](../mods/README.md). 
 
 ## OS & Browser support 
 

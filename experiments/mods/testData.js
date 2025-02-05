@@ -1,6 +1,6 @@
 var goNoGoExample = '"nogoGoNoGoTraining" 437 1\n"goGoNoGoTraining" 470 0\n"goGoNoGoTraining" 441 0\n"goGoNoGoTraining" 324 0\n"goGoNoGoTraining" 290 0\n"goGoNoGoTraining" 271 0\n"goGoNoGoTraining" 286 0\n"goGoNoGoTraining" 317 0\n"goGoNoGoTraining" 288 0\n"goGoNoGoTraining" 302 0\n"goGoNoGoTraining" 292 0\n"goGoNoGoTraining" 404 0\n"goGoNoGoTraining" 298 0\n"goGoNoGoTraining" 354 0\n"nogoGoNoGoTraining" 2000 0\n"nogoGoNoGoTraining" 2000 0\n"goGoNoGoTraining" 352 0\n"nogoGoNoGoTraining" 2000 0\n"goGoNoGoTraining" 300 0\n"goGoNoGoTraining" 370 0\n"nogoGoNoGoTraining" 2000 0\n"goGoNoGoTraining" 270 0\n"goGoNoGoTraining" 317 0\n"goGoNoGoTraining" 283 0\n"goGoNoGoTraining" 270 0\n"goGoNoGoTesting" 467 0\n"goGoNoGoTesting" 391 0\n"goGoNoGoTesting" 268 0\n"nogoGoNoGoTesting" 266 1\n"goGoNoGoTesting" 287 0\n"goGoNoGoTesting" 361 0\n"goGoNoGoTesting" 282 0\n"nogoGoNoGoTesting" 2000 0\n"goGoNoGoTesting" 308 0\n"goGoNoGoTesting" 286 0\n"goGoNoGoTesting" 273 0\n"goGoNoGoTesting" 295 0\n"goGoNoGoTesting" 324 0\n"goGoNoGoTesting" 320 0\n"goGoNoGoTesting" 305 0\n"goGoNoGoTesting" 294 0\n"goGoNoGoTesting" 227 0\n"goGoNoGoTesting" 279 0\n"goGoNoGoTesting" 259 0\n"nogoGoNoGoTesting" 2000 0\n"goGoNoGoTesting" 295 0\n"goGoNoGoTesting" 278 0\n"nogoGoNoGoTesting" 237 1\n"goGoNoGoTesting" 276 0\n"nogoGoNoGoTesting" 2000 0\n'
 
-var posner = `cueingBlockTraining cueright targetright valid     cued 1 1500 3
+var posner = ```cueingBlockTraining cueright targetright valid     cued 1 1500 3
 cueingBlockTraining cueright targetright valid     cued 1 340 1
 cueingBlockTraining cueleft  targetleft valid     cued 1 300 1
 cueingBlockTraining cueleft  targetright invalid uncued 0 148 2
@@ -199,4 +199,4 @@ cueingBlockTesting cueleft  targetleft valid     cued 1 239 1
 cueingBlockTesting cueright targetright valid     cued 1 414 1
 cueingBlockTesting cueleft  targetleft valid     cued 1 270 1
 cueingBlockTesting cueleft  targetleft valid     cued 1 219 1
-cueingBlockTesting cueright targetright valid     cued 1 377 1`
+cueingBlockTesting cueright targetright valid     cued 1 377 1```

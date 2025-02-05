@@ -13,7 +13,7 @@ Once you have transpiled and downloaded the experiments, if you want support of 
 1. Copy [our mod script](ZPsyToolkitMod.js) to your clipboard.
 2. Under the main `body` block of the experiment, but a new `<script></script>` block, and inject the mod script there, see screen shot: 
 
-![mod injection](./assets/injectModScript.PNG)
+![mod injection](assets/injectModScript.PNG)
 
 3. Next, we'll need to call a couple of custom functions in the experiment. Find the defintion for the psytoolkit `whenloaded` function, and add the follow function calls:
 

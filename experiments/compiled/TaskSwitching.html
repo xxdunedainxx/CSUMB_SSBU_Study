@@ -1,3 +1,4 @@
+<!-- TO TWEAK TRIAL TOTAL, SEARCH FOR this.trials=Array( 60 ) // note that '60' is the ORIGINAL value -->
 <!DOCTYPE HTML>
 <html><head><META CHARSET='UTF-8'><title>PsyToolkit run experiment</title>
 </head>
@@ -8,22 +9,24 @@
   * Date: July 8, 2024
   * Simple utility script written on top of the compiled psytoolkit HTML experiments
   * Effectively what this does is listen to existing psytoolkit events (specifically showing the data).
-  * Once the data is ready to show, we simply take the data and output it to a CSV file. 
+  * Once the data is ready to show, we simply take the data and output it to a CSV file.
   * This operation runs in the background:
   *  1. the beginning (to bootstrap the listener)
   *  2. At the end once the data is ready to show (this will trigger the listener at the end of the experiment)
-  * 
-  * Update: July 23, 2024 - Auto-full screen, CSV File named per experiment, X-Axis collumn names 
+  *
+  * Update: July 23, 2024 - Auto-full screen, CSV File named per experiment, X-Axis collumn names
   * Update: December 6, 2024:
     - Add Versioning to HTML Title
-    - Automated stats upon experiment completion 
-  * Update: January 3, 2025 - fix automated stats bug? 
-*/ 
+    - Automated stats upon experiment completion
+  * Update: January 3, 2025 - fix automated stats bug?
+  * Update: February 4th, 2025 - Switch cost automated calculation.
+*/
 
-// Semantic versioning for the app 
-VERSION="1.0.2"
+// Semantic versioning for the app
+VERSION="1.0.3"
+
 /*
- * Simple utilityy function for downloading a document of a particular content type. 
+ * Simple utility function for downloading a document of a particular content type.
 */
 function downloadBlob(content, filename, contentType) {
   // Create a blob
@@ -40,11 +43,11 @@ function downloadBlob(content, filename, contentType) {
 /**
   * @Deprecated
   *
-  * Dont need this, we can just pull the raw data stored in memory, 
-  *   instead of extracting it from the table 
+  * Dont need this, we can just pull the raw data stored in memory,
+  *   instead of extracting it from the table
 */
 function tableToCSV() {
- 
+
     let DATA_TO_OUTPUT = [];
     var data = document.getElementById("showdata")
     let rows = data.getElementsByTagName('tr');
@@ -59,8 +62,8 @@ function tableToCSV() {
     DATA_TO_OUTPUT = DATA_TO_OUTPUT.join('\n');
     console.log(DATA_TO_OUTPUT)
     downloadBlob(
-      DATA_TO_OUTPUT, 
-      "results.csv", 
+      DATA_TO_OUTPUT,
+      "results.csv",
       'text/csv;charset=utf-8;'
     )
 }
@@ -74,22 +77,22 @@ function generateOutputFileName(baseName) {
 }
 
 /*
- * Converts space separated data into a CSV string. 
- *  Passes to downloadBlob to automatically download the file 
+ * Converts space separated data into a CSV string.
+ *  Passes to downloadBlob to automatically download the file
  *
  */
 function outputDataToCSV(data, outputFileName) {
-    
-    // Update - 8/1/24 -- need to trim extra white space to 1! 
-    // Then split by single white space into a CSV 
+
+    // Update - 8/1/24 -- need to trim extra white space to 1!
+    // Then split by single white space into a CSV
     var dataToWrite = data.replace(/\s{2,}/g, ' ').replaceAll(' ', ',')
     console.log(dataToWrite)
 
     downloadBlob(
-      dataToWrite, 
-      generateOutputFileName(outputFileName), 
+      dataToWrite,
+      generateOutputFileName(outputFileName),
       'text/csv;charset=utf-8;'
-    )  
+    )
 }
 
 /*
@@ -122,9 +125,9 @@ function psy_screen_scale(a, b) {
 }
 
 /**
- * @Deprecated 
- * Util function for starting the experiment in full screen by default on experiment startup 
- * Press 'esc' to exit out of full screen. 
+ * @Deprecated
+ * Util function for starting the experiment in full screen by default on experiment startup
+ * Press 'esc' to exit out of full screen.
  * Mayy not be needed...
  */
 function fullScreen(){
@@ -140,7 +143,7 @@ function fullScreen(){
 
 /**
  * @Deprecated - Not needed, i think..
- * Bootstraps the page with a button for toggling full screen 
+ * Bootstraps the page with a button for toggling full screen
  *
  *
  */
@@ -148,7 +151,7 @@ function addFullScreenElement(){
   document.getElementById('showdata').innerHTML="<button onclick='fullScreen()'>fullscreen</button>"
 }
 
-// Contains mapping from experiments --> column names 
+// Contains mapping from experiments --> column names
 function getExperimentToColumnNamesMap(experimentName){
   var experimentToColumnNamesMapping = {
 
@@ -158,8 +161,8 @@ function getExperimentToColumnNamesMap(experimentName){
       3 - The error status (0 is correct, 1 is error)
     */
     "GoNoGo" : [
-        "GoNoGoAndTestOrTrial", 
-        "ResponseTimeMs", 
+        "GoNoGoAndTestOrTrial",
+        "ResponseTimeMs",
         "ErrorStatus"
     ],
     /*
@@ -188,7 +191,7 @@ function getExperimentToColumnNamesMap(experimentName){
     ],
     /*
     Ref: https://www.psytoolkit.org/experiment-library/deary_liewald.html
-    1 - Test or trials 
+    1 - Test or trials
     2 - training (1=training, 0=real data collection)
     3 - number of choices (1 in simple block, 4 in choice block)
     4 - time between response and next trial (between 1 and 3 seconds)
@@ -211,11 +214,11 @@ function getExperimentToColumnNamesMap(experimentName){
       2 - cue position (cueleft, cueright)
       3 - target position (targetleft, targetright)
       4 - cue validity (cued, uncued)
-      5 - cued or uncued 
+      5 - cued or uncued
       6 - cue validity as number (1=cued, 0=uncued)
       7 - Response time (ms)
       8 - Status (1=correct, 2=wrong, 3=timeout)
-    */ 
+    */
     "PosnerCue": [
       "TestOrTraining",
       "CuePosition",
@@ -232,14 +235,197 @@ function getExperimentToColumnNamesMap(experimentName){
 }
 
 /**
-  * If a user responds to no-go, count towards % of no-goes 
+  * Convert poorly formatted output data to a hash table
+  *     -- Easier to work with programatically
+**/
+function serializeOutputDataToTable(data, experimentName){
+    var dataFormatted = data.split("\n")
+    var rData = {
+        // Place data here
+    }
+
+    // KEYS OF THE HASH TABLE
+    var columnNameMapping = getExperimentToColumnNamesMap(experimentName)
+
+    // Initialize dictionary keys
+    for(var i = 0; i < columnNameMapping.length; i++){
+        rData[columnNameMapping[i]] = []
+    }
+
+    // Iterate each data entry
+    for(var i = 0; i < dataFormatted.length; i++){
+       var formatLineAsArray = dataFormatted[i].replace(/\s{2,}/g, ' ').split(" ")
+
+       // Iterate each column
+       for(var j = 0; j < formatLineAsArray.length; j++){
+            rData[columnNameMapping[j]].push(formatLineAsArray[j])
+       }
+    }
+
+    return rData
+}
+
+/**
+  * Calculate switch cost based on next trial
+**/
+function isSwitchTrial(trial){
+    // -- 1=task switch , 0=task repeat 'taskSwitchOrTaskRepeat' column
+    return trial == "1"
+}
+
+function isTrialCorrect(trial){
+    // -- status (1=correct, 2=error, 3=too slow)
+    return trial == "1"
+}
+
+function initialize2DArray(rows, cols) {
+  return Array.from({ length: rows }, () => Array(cols).fill(null));
+}
+
+/**
+  * Calculates the 'switch cost' of a task switching experiment
+  * If the current task is 'even' (say N=2),
+  *     -- we can calculate the switch cost as the difference between val(N) - (val(N-1))
+  *
+*/
+function calculateSwitchCost(data){
+    console.log("Calculate switch cost...")
+    console.log(data)
+    var dataSerialized = serializeOutputDataToTable(
+        data,
+        "TaskSwitching"
+    )
+
+    console.log(dataSerialized)
+
+    var switchCosts = {
+
+    }
+
+    // populate the table
+    for(var i = 0; i < dataSerialized["TaskSwitchTypeAndTestOrTrial"].length; i++){
+        if(dataSerialized["TaskSwitchTypeAndTestOrTrial"][i] in switchCosts == false){
+            switchCosts[dataSerialized["TaskSwitchTypeAndTestOrTrial"][i]]={
+                mean: 0
+            }
+        }
+    }
+
+    // Algo:
+    // - filter incorrect SWITCH trials
+    // - calculate on switch-repeat pairs
+    // -- 1=task switch , 0=task repeat 'taskSwitchOrTaskRepeat' column
+    // -- status (1=correct, 2=error, 3=too slow)
+    for(var i = 0; i < dataSerialized["responseTimeMs"].length; i++){
+        if(isSwitchTrial(dataSerialized["taskSwitchOrTaskRepeat"][i])
+        ){
+            // check [N+1] - (N)
+            var keyToUse = `${i}_cost`
+            if(isTrialCorrect(dataSerialized["status"][i])){
+            switchCosts[dataSerialized["TaskSwitchTypeAndTestOrTrial"][i]][keyToUse] = parseFloat(dataSerialized["responseTimeMs"][i] - dataSerialized["responseTimeMs"][i+1])
+            } else {
+                switchCosts[dataSerialized["TaskSwitchTypeAndTestOrTrial"][i]][keyToUse] = "INCORRECT"
+            }
+        }
+    }
+
+    // Gather the mean values
+    for (const [key, value] of Object.entries(switchCosts)) {
+        console.log(`${key}: ${value}`);
+        var total = 0
+        var numberOfEntries = 0
+
+        for (const [testEntryKey, testEntryValue] of Object.entries(switchCosts[key])) {
+          console.log(`${testEntryKey}: ${testEntryValue}`);
+
+
+          if(testEntryKey == "mean"){
+            continue
+          } else {
+             if(!isNaN(switchCosts[key][testEntryKey])){
+                numberOfEntries+=1
+                total+= switchCosts[key][testEntryKey]
+             }
+          }
+        }
+        console.log(`${total} vs # entries ${numberOfEntries}`)
+        switchCosts[key]["mean"] = (total / numberOfEntries)
+    }
+
+    // cache old map
+    var copyOfData = JSON.parse(JSON.stringify(switchCosts));
+
+    // Out dict to a CSV
+    var statsCsvName = "TaskSwitching_stats"
+    var csv = initialize2DArray(100,100)
+    // Create mean columns first and remove from map
+    var columnPointer = 0
+    var rowPointer = 0
+
+    // Initialize header first
+    for (const key of Object.keys(switchCosts)) {
+        var columnName = `${key}_mean`
+        csv[rowPointer][columnPointer] = columnName
+        columnPointer+=1
+    }
+
+    rowPointer+=1
+    columnPointer=0
+    for (const key of Object.keys(switchCosts)) {
+        console.log(switchCosts[key]['mean'])
+        csv[rowPointer][columnPointer] = switchCosts[key]['mean']
+        columnPointer+=1
+        delete switchCosts[key]['mean']
+    }
+
+    rowPointer = 0
+    // Now create columns for non-mean values
+    for (const key of Object.keys(switchCosts)) {
+        var columnName = `${key}_switchCosts`
+        csv[rowPointer][columnPointer] = columnName
+        rowPointer+=1
+        for(const trialKey of Object.keys(switchCosts[key])){
+            csv[rowPointer][columnPointer] = switchCosts[key][trialKey]
+            rowPointer+=1
+        }
+        rowPointer=0
+        columnPointer+=1
+
+    }
+
+    console.log("csv...")
+    console.log(csv)
+    var finalCsvString = ""
+    // Create the final CSV string
+    for(var i = 0; i < csv.length; i++){
+        for(var j = 0; j < csv[i].length; j++){
+            if(csv[i][j] != null){
+                finalCsvString+=`${csv[i][j]},`
+            } else {
+                finalCsvString+= ","
+            }
+        }
+        // new line per row
+        finalCsvString+="\n"
+    }
+    downloadBlob(
+        finalCsvString,
+        generateOutputFileName(statsCsvName),
+        'text/csv;charset=utf-8;'
+    )
+
+    return copyOfData
+}
+
+/**
+  * If a user responds to no-go, count towards % of no-goes
   * Remember JS is pass by reference for tables, s
   * so we can pass original data table and modify it!
 */
 function goNoGoPercent(data, originalDataCollection, dataCategory) {
   console.log(`${dataCategory} -- Go no go custom stat!! -- ${data} -- ${JSON.stringify(originalDataCollection)}`)
-  
-  // For no-gos, we want to track % of go vs no goes 
+
+  // For no-gos, we want to track % of go vs no goes
   if(dataCategory.substr(0,4) == 'nogo'){
     console.log("This is a no go trial")
     var keyToUse = `CUSTOM_${dataCategory}_NoGoPercentCalculator`
@@ -257,21 +443,21 @@ function goNoGoPercent(data, originalDataCollection, dataCategory) {
       originalDataCollection[keyToUse]["totalMisses"] += 1
     }
 
-    originalDataCollection[keyToUse]["percentMisses"] = originalDataCollection[keyToUse]["totalMisses"] / originalDataCollection[keyToUse]["totalTrials"] 
+    originalDataCollection[keyToUse]["percentMisses"] = originalDataCollection[keyToUse]["totalMisses"] / originalDataCollection[keyToUse]["totalTrials"]
   }
   console.log(originalDataCollection)
   return originalDataCollection
 }
 
-// Custom stats thats effectively a 'null' function. Does nothing 
-// Intended for stats we want to skip. Not sure if we'll need or not. 
+// Custom stats thats effectively a 'null' function. Does nothing
+// Intended for stats we want to skip. Not sure if we'll need or not.
 function noOpSkipFunction(data, originalDataCollection, dataCategory){}
 
 /**
-  * Simple mapping for 'custom' statistics calculations.  
+  * Simple mapping for 'custom' statistics calculations.
   *
   *
-*/ 
+*/
 function customStatsLogic(experimentName) {
       var customLogicMapper = {
         "GoNoGo" : {},
@@ -287,88 +473,89 @@ function customStatsLogic(experimentName) {
 
 /**
   * Generates a secondary CSV with specified experiment stats.
-  * By default will include peak vals (of test vs real). And means for test and real. 
+  * By default will include peak vals (of test vs real). And means for test and real.
   *
   */
 function calculateAutomatedStats(experimentName, data){
 
-  var columnNameMapping = getExperimentToColumnNamesMap(experimentName)
+  if(experimentName == "TaskSwitching"){
+    return calculateSwitchCost(data)
+  } else{
+      var columnNameMapping = getExperimentToColumnNamesMap(experimentName)
 
-  var dataFormatted = data.split("\n")
-  
-  var customStatisLogic = customStatsLogic(experimentName)
+      var dataFormatted = data.split("\n")
 
-  console.log(customStatsLogic)
+      var customStatisLogic = customStatsLogic(experimentName)
 
-  // Stores the resultant data in a nice hash table :)
-  var dataToUse = {}
+      console.log(customStatsLogic)
 
-  for(var i = 0; i < dataFormatted.length; i++){
-    // Grab the row 
-    var splitUpRow = dataFormatted[i].replace(/\s{2,}/g, ' ').split(" ")
+      // Stores the resultant data in a nice hash table :)
+      var dataToUse = {}
 
-    // Get the 'category' of data
-    var dataCategory = splitUpRow[0].replaceAll("\"", "")
-    if(dataCategory === ""){
-      console.log("Empty string/garbage data, skipping..");
-    } else {
-      for(var j = 1; j < columnNameMapping.length; j++){
-        var dataKey = `${dataCategory}_${columnNameMapping[j]}`
-        var dataToAddCastToInt = parseInt(splitUpRow[j])
+      for(var i = 0; i < dataFormatted.length; i++){
+        // Grab the row
+        var splitUpRow = dataFormatted[i].replace(/\s{2,}/g, ' ').split(" ")
 
-        if(columnNameMapping[j] in customStatisLogic == true){
-          console.log(`Custom stats logic handler: ${columnNameMapping[j]} -- ${dataToAddCastToInt}`)
-          dataToUse = customStatisLogic[columnNameMapping[j]](
-            dataToAddCastToInt,
-            dataToUse,
-            dataCategory
-          )
+        // Get the 'category' of data
+        var dataCategory = splitUpRow[0].replaceAll("\"", "")
+        if(dataCategory === ""){
+          console.log("Empty string/garbage data, skipping..");
         } else {
+          for(var j = 1; j < columnNameMapping.length; j++){
+            var dataKey = `${dataCategory}_${columnNameMapping[j]}`
+            var dataToAddCastToInt = parseInt(splitUpRow[j])
 
-          if(dataKey in dataToUse == false) {
-            console.log("Add entry to dataToUse table..")
-            dataToUse[dataKey] = {
-              "mean" : 0,
-              "peakVal": null,
-              "minVal" : null,
-              "totalEntries" : 0
+            if(columnNameMapping[j] in customStatisLogic == true){
+              console.log(`Custom stats logic handler: ${columnNameMapping[j]} -- ${dataToAddCastToInt}`)
+              dataToUse = customStatisLogic[columnNameMapping[j]](
+                dataToAddCastToInt,
+                dataToUse,
+                dataCategory
+              )
+            } else {
+
+              if(dataKey in dataToUse == false) {
+                console.log("Add entry to dataToUse table..")
+                dataToUse[dataKey] = {
+                  "mean" : 0,
+                  "peakVal": null,
+                  "minVal" : null,
+                  "totalEntries" : 0
+                }
+              }
+
+              // Actual mean is calculated later. This is just to store the total.
+              dataToUse[dataKey]["mean"] += dataToAddCastToInt
+              dataToUse[dataKey]["totalEntries"] += 1
+
+              if(dataToUse[dataKey]["peakVal"] == null ||
+                dataToUse[dataKey]["peakVal"] < dataToAddCastToInt){
+                dataToUse[dataKey]["peakVal"] = dataToAddCastToInt
+              }
+
+              if(dataToUse[dataKey]["minVal"] == null ||
+                dataToUse[dataKey]["minVal"] > dataToAddCastToInt){
+                dataToUse[dataKey]["minVal"] = dataToAddCastToInt
+              }
             }
+
           }
-
-          // Actual mean is calculated later. This is just to store the total.
-          dataToUse[dataKey]["mean"] += dataToAddCastToInt
-          dataToUse[dataKey]["totalEntries"] += 1
-
-          if(dataToUse[dataKey]["peakVal"] == null || 
-            dataToUse[dataKey]["peakVal"] < dataToAddCastToInt){
-            dataToUse[dataKey]["peakVal"] = dataToAddCastToInt
-          }
-
-          if(dataToUse[dataKey]["minVal"] == null || 
-            dataToUse[dataKey]["minVal"] > dataToAddCastToInt){
-            dataToUse[dataKey]["minVal"] = dataToAddCastToInt
-          }
-
         }
-
       }
-    }
+
+      // Actually calculate the means
+      for (const key of Object.keys(dataToUse)) {
+        if("mean" in dataToUse[key]){
+          // dataToUse[key]["originalMean"] = dataToUse[key]["mean"]
+          dataToUse[key]["mean"] = (dataToUse[key]["mean"] / dataToUse[key]["totalEntries"])
+        }
+      }
+      return dataToUse
   }
-
-  // Actually calculate the means 
-  for (const key of Object.keys(dataToUse)) {
-    if("mean" in dataToUse[key]){
-      // dataToUse[key]["originalMean"] = dataToUse[key]["mean"] 
-      dataToUse[key]["mean"] = (dataToUse[key]["mean"] / dataToUse[key]["totalEntries"])
-    }
-  }
-
-
-  return dataToUse
 }
 
 /**
-  * Take data from 'calculateAutomatedStats' and format into a CSV. 
+  * Take data from 'calculateAutomatedStats' and format into a CSV.
   * Afterwards push to client for download
   *
 */
@@ -382,7 +569,7 @@ function createAutomatedStatsCSV(statsData, experimentName) {
 
   var statsCsvName = `${experimentName}_stats`
 
-  // Bad this is hardcoded but o well.. 
+  // Bad this is hardcoded but o well..
   // CSVs[normalStatsKey] = "mean, minVal, peakVal, totalEntries\n"
 
   for (const key of Object.keys(statsData)) {
@@ -399,21 +586,21 @@ function createAutomatedStatsCSV(statsData, experimentName) {
   }
 
   console.log(csv)
-  
+
   var finalCsv = (csv[0] + "\n" + csv[1])
 
   downloadBlob(
-    finalCsv, 
-    generateOutputFileName(statsCsvName), 
+    finalCsv,
+    generateOutputFileName(statsCsvName),
     'text/csv;charset=utf-8;'
-  )  
+  )
 }
 
 /*
- * Add collumn identifiers based on experiment name 
+ * Add collumn identifiers based on experiment name
  */
 function addCollumnsToOutputData(experimentName, data) {
-  
+
   var experimentColumnMapping = getExperimentToColumnNamesMap(experimentName)
 
   var collumnsAsString = experimentColumnMapping.join(",")
@@ -446,54 +633,55 @@ function loadWelcomeImageBitMap(){
 }
 
 /**
-  * Entry point for the custom data retrieval function. 
-  * Basically it bootstraps on top of the existing 'showdata_html' event, 
-  *   and will take the data and automatically convert it to a CSV and download it. 
+  * Entry point for the custom data retrieval function.
+  * Basically it bootstraps on top of the existing 'showdata_html' event,
+  *   and will take the data and automatically convert it to a CSV and download it.
 */
 function initCustomDataLoader(experimentName){
-    // Store the original method in a local var. 
+    // Store the original method in a local var.
     var originalShowDataHtml = showdata_html;
 
     // Stash for later in the callback..
     var EXPERIMENT_NAME = experimentName;
 
-    // Bootstrap listener on top of the 'showdata_html' psytoolkit javascript method. 
+    // Bootstrap listener on top of the 'showdata_html' psytoolkit javascript method.
     showdata_html = function() {
         originalShowDataHtml();
 
-        // Take output data and create the CSV for download 
+        // Take output data and create the CSV for download
         outputDataToCSV(
-          addCollumnsToOutputData(EXPERIMENT_NAME, outputdata), 
+          addCollumnsToOutputData(EXPERIMENT_NAME, outputdata),
           EXPERIMENT_NAME
         );
 
-        // Stash the stats. Pass on to another function for creating the CSVs 
+        // Stash the stats. Pass on to another function for creating the CSVs
         var automatedStats = calculateAutomatedStats(
           EXPERIMENT_NAME,
           outputdata
         );
-
-        createAutomatedStatsCSV(automatedStats, EXPERIMENT_NAME);
+        if(EXPERIMENT_NAME != "TaskSwitching"){
+            createAutomatedStatsCSV(automatedStats, EXPERIMENT_NAME);
+        }
     }
 
     // @Deprecated -- not needed? addFullScreenElement();
 }
 
 /**
-  * This is effectively the 'main' entry point of the plugin. 
-  * Only this function should be called in the psytoolkit scripts. 
+  * This is effectively the 'main' entry point of the plugin.
+  * Only this function should be called in the psytoolkit scripts.
   *
 */
 function loadZehPlugin(experimentName) {
   console.log("INIT PSYTOOLKIT PLUGIN")
 
-  // Adds  the version 
+  // Adds  the version
   addVersion(VERSION);
 
-  // Laod the custom welcome image 
+  // Laod the custom welcome image
   loadWelcomeImageBitMap();
 
-  // Add our custom data loader callback 
+  // Add our custom data loader callback
   initCustomDataLoader(experimentName);
 }
 </script>
@@ -699,15 +887,15 @@ task_lettersnumbers.tasktype=1);3==pos&&(task_lettersnumbers.xpos1=25,task_lette
 210,40,0),psy_draw_all_db());psy_delay(3E3);break;case 5:task_lettersnumbers.step++;psy_clear_stimuli1(-1);psy_draw_all_db();task_lettersnumbers.run();break;case 6:task_lettersnumbers.step++,psy_clear_stimuli1(2),psy_clear_stimuli1(3),psy_draw_all_db(),previoustask==task_lettersnumbers.tasktype&&(taskswitch=0),previoustask!=task_lettersnumbers.tasktype&&(taskswitch=1),previoustask=task_lettersnumbers.tasktype,addoutput(current_block.substring(6,current_block.length)+" "+pos+" "+task_lettersnumbers.tasktype+
 " "+task_lettersnumbers.letter+" "+task_lettersnumbers.number+" "+justtask+" "+taskswitch+" "+keystatus.status+" "+keystatus.time+" "+keystatus.totaltime),setTimeout(current_block+".run()",0)}}},block_messagenumber1={blockname:"block_messagenumber1",step:1,trial_counter:0,start:function(){block_messagenumber1.step=1;current_block="block_messagenumber1";psy_clear_stimulus_counters_db();block_messagenumber1.run()},run:function(){current_block=block_messagenumber1.blockname;switch(block_messagenumber1.step){case 1:block_messagenumber1.step++;
 psy_wait(GeneralTrialMessage,32);break;case 2:block_messagenumber1.step++;psy_clear_screen_db();block_messagenumber1.run();break;case 3:block_messagenumber1.step++,setTimeout("blocks"+psy_blockorder+".run()",0)}}},block_lettersTraining={blockname:"block_lettersTraining",step:1,trial_counter:0,trial_counter_per_task:60,max_trials_in_block:999999,criteria_fullfilled:1,choosetask:0,roe:[!1],trials:[],current_trial:0,start:function(){block_lettersTraining.step=1;current_block="block_lettersTraining";
-this.trials=Array(60).fill(0);this.trials=psy_array_shuffle(this.trials);this.trials=this.trials.slice(0,60);psy_clear_stimulus_counters_db();block_lettersTraining.run()},run:function(){current_block=block_lettersTraining.blockname;switch(block_lettersTraining.step){case 1:block_lettersTraining.step++;psy_pager.start([instructions1,instructions2,instructions3,instructions4,instructions5]);break;case 2:block_lettersTraining.step++;psy_wait(readyletters,32);break;case 3:block_lettersTraining.step++;
+this.trials=Array(6).fill(0);this.trials=psy_array_shuffle(this.trials);this.trials=this.trials.slice(0,60);psy_clear_stimulus_counters_db();block_lettersTraining.run()},run:function(){current_block=block_lettersTraining.blockname;switch(block_lettersTraining.step){case 1:block_lettersTraining.step++;psy_pager.start([instructions1,instructions2,instructions3,instructions4,instructions5]);break;case 2:block_lettersTraining.step++;psy_wait(readyletters,32);break;case 3:block_lettersTraining.step++;
 psy_clear_screen_db();block_lettersTraining.run();break;case 4:block_lettersTraining.step++;previoustask=-1;setTimeout("block_lettersTraining.run()",0);break;case 5:block_lettersTraining.step++;taskswitch=0;setTimeout("block_lettersTraining.run()",0);break;case 6:block_lettersTraining.step++;justtask=1;setTimeout("block_lettersTraining.run()",0);break;case 7:block_lettersTraining.step++;psy_clear_screen_db();block_lettersTraining.max_trials_in_block=999999;block_lettersTraining.criteria_fullfilled=
 1;0<block_lettersTraining.criteria_fullfilled&&block_lettersTraining.trial_counter<=block_lettersTraining.max_trials_in_block?(block_lettersTraining.trial_counter++,this.current_trial=this.trials.shift(),task_lettersnumbers.start(this.current_trial)):setTimeout("block_lettersTraining.run()",0);break;case 8:block_lettersTraining.step++;block_lettersTraining.trial_counter_per_task--;0<error_status&&0<this.trials.length&&this.roe[0]&&(this.trials.unshift(this.current_trial),this.trials.pop());if(0==
 block_lettersTraining.trials.length||block_lettersTraining.trial_counter>=block_lettersTraining.max_trials_in_block||1==tasklist_end_request||1==experiment_end_request)tasklist_end_request=block_lettersTraining.criteria_fullfilled=0;1==block_lettersTraining.criteria_fullfilled&&(block_lettersTraining.step-=2);setTimeout("block_lettersTraining.run()",0);break;case 9:block_lettersTraining.step++,psy_clear_screen_db(),setTimeout("blocks"+psy_blockorder+".run()",0)}}},block_numbersTraining={blockname:"block_numbersTraining",
-step:1,trial_counter:0,trial_counter_per_task:60,max_trials_in_block:999999,criteria_fullfilled:1,choosetask:0,roe:[!1],trials:[],current_trial:0,start:function(){block_numbersTraining.step=1;current_block="block_numbersTraining";this.trials=Array(60).fill(0);this.trials=psy_array_shuffle(this.trials);this.trials=this.trials.slice(0,60);psy_clear_stimulus_counters_db();block_numbersTraining.run()},run:function(){current_block=block_numbersTraining.blockname;switch(block_numbersTraining.step){case 1:block_numbersTraining.step++;
+step:1,trial_counter:0,trial_counter_per_task:60,max_trials_in_block:999999,criteria_fullfilled:1,choosetask:0,roe:[!1],trials:[],current_trial:0,start:function(){block_numbersTraining.step=1;current_block="block_numbersTraining";this.trials=Array(6).fill(0);this.trials=psy_array_shuffle(this.trials);this.trials=this.trials.slice(0,60);psy_clear_stimulus_counters_db();block_numbersTraining.run()},run:function(){current_block=block_numbersTraining.blockname;switch(block_numbersTraining.step){case 1:block_numbersTraining.step++;
 justtask=2;setTimeout("block_numbersTraining.run()",0);break;case 2:block_numbersTraining.step++;psy_wait(readynumbers,32);break;case 3:block_numbersTraining.step++;psy_clear_screen_db();block_numbersTraining.run();break;case 4:block_numbersTraining.step++;psy_clear_screen_db();block_numbersTraining.max_trials_in_block=999999;block_numbersTraining.criteria_fullfilled=1;0<block_numbersTraining.criteria_fullfilled&&block_numbersTraining.trial_counter<=block_numbersTraining.max_trials_in_block?(block_numbersTraining.trial_counter++,
 this.current_trial=this.trials.shift(),task_lettersnumbers.start(this.current_trial)):setTimeout("block_numbersTraining.run()",0);break;case 5:block_numbersTraining.step++;block_numbersTraining.trial_counter_per_task--;0<error_status&&0<this.trials.length&&this.roe[0]&&(this.trials.unshift(this.current_trial),this.trials.pop());if(0==block_numbersTraining.trials.length||block_numbersTraining.trial_counter>=block_numbersTraining.max_trials_in_block||1==tasklist_end_request||1==experiment_end_request)tasklist_end_request=
 block_numbersTraining.criteria_fullfilled=0;1==block_numbersTraining.criteria_fullfilled&&(block_numbersTraining.step-=2);setTimeout("block_numbersTraining.run()",0);break;case 6:block_numbersTraining.step++,psy_clear_screen_db(),setTimeout("blocks"+psy_blockorder+".run()",0)}}},block_mixedTraining={blockname:"block_mixedTraining",step:1,trial_counter:0,trial_counter_per_task:60,max_trials_in_block:999999,criteria_fullfilled:1,choosetask:0,roe:[!1],trials:[],current_trial:0,start:function(){block_mixedTraining.step=
-1;current_block="block_mixedTraining";this.trials=Array(60).fill(0);this.trials=psy_array_shuffle(this.trials);this.trials=this.trials.slice(0,60);psy_clear_stimulus_counters_db();block_mixedTraining.run()},run:function(){current_block=block_mixedTraining.blockname;switch(block_mixedTraining.step){case 1:block_mixedTraining.step++;justtask=0;setTimeout("block_mixedTraining.run()",0);break;case 2:block_mixedTraining.step++;psy_wait(readylettersnumbers,32);break;case 3:block_mixedTraining.step++;psy_clear_screen_db();
+1;current_block="block_mixedTraining";this.trials=Array(6).fill(0);this.trials=psy_array_shuffle(this.trials);this.trials=this.trials.slice(0,60);psy_clear_stimulus_counters_db();block_mixedTraining.run()},run:function(){current_block=block_mixedTraining.blockname;switch(block_mixedTraining.step){case 1:block_mixedTraining.step++;justtask=0;setTimeout("block_mixedTraining.run()",0);break;case 2:block_mixedTraining.step++;psy_wait(readylettersnumbers,32);break;case 3:block_mixedTraining.step++;psy_clear_screen_db();
 block_mixedTraining.run();break;case 4:block_mixedTraining.step++;psy_clear_screen_db();block_mixedTraining.max_trials_in_block=999999;block_mixedTraining.criteria_fullfilled=1;0<block_mixedTraining.criteria_fullfilled&&block_mixedTraining.trial_counter<=block_mixedTraining.max_trials_in_block?(block_mixedTraining.trial_counter++,this.current_trial=this.trials.shift(),task_lettersnumbers.start(this.current_trial)):setTimeout("block_mixedTraining.run()",0);break;case 5:block_mixedTraining.step++;block_mixedTraining.trial_counter_per_task--;
 0<error_status&&0<this.trials.length&&this.roe[0]&&(this.trials.unshift(this.current_trial),this.trials.pop());if(0==block_mixedTraining.trials.length||block_mixedTraining.trial_counter>=block_mixedTraining.max_trials_in_block||1==tasklist_end_request||1==experiment_end_request)tasklist_end_request=block_mixedTraining.criteria_fullfilled=0;1==block_mixedTraining.criteria_fullfilled&&(block_mixedTraining.step-=2);setTimeout("block_mixedTraining.run()",0);break;case 6:block_mixedTraining.step++;psy_clear_screen_db();
 datalines=outputdata.split("\n");var a=0,b=0,c=987654321,d=-987654321;for(tmpx=0;tmpx<datalines.length-1;tmpx++)datalinenumbers=datalines[tmpx].split(/ +/),1==parseInt(datalinenumbers[7])&0!=parseInt(datalinenumbers[5])&0==parseInt(datalinenumbers[6])&&(parseInt(datalinenumbers[8]),b+=parseInt(datalinenumbers[8]),parseInt(datalinenumbers[8])<c&&(c=parseInt(datalinenumbers[8])),parseInt(datalinenumbers[8])>d&&(d=parseInt(datalinenumbers[8])),a++);RTpure=0<a?Math.round(b/a):0;datalines=outputdata.split("\n");
@@ -716,15 +904,15 @@ for(tmpx=0;tmpx<datalines.length-1;tmpx++)datalinenumbers=datalines[tmpx].split(
 psy_add_text_rgb_db(1,-200,-150,PSY_CENTRAL,PSY_CENTRAL,255,255,255,"Response times (RT in ms):",1);psy_draw_all_db();tmptext="RTs in single-task blocks:  "+RTpure+" ms";psy_add_text_rgb_db(1,-200,-50,PSY_CENTRAL,PSY_CENTRAL,255,255,255,tmptext,1);psy_draw_all_db();tmptext="RTs in mixed block, task-repeat trials:  "+RTmixRepeat+"ms";psy_add_text_rgb_db(1,-200,0,PSY_CENTRAL,PSY_CENTRAL,255,255,255,tmptext,1);psy_draw_all_db();tmptext="RTs in mixed block, task-switch trials:  "+RTmixSwitch+"ms";psy_add_text_rgb_db(1,
 -200,50,PSY_CENTRAL,PSY_CENTRAL,255,255,255,tmptext,1);psy_draw_all_db();tmptext="Task switch cost in RTs:  "+RTSwitchCost+"ms";psy_add_text_rgb_db(1,-200,100,PSY_CENTRAL,PSY_CENTRAL,255,255,255,tmptext,1);psy_draw_all_db();psy_add_text_rgb_db(1,-200,150,PSY_CENTRAL,PSY_CENTRAL,255,255,255,"Press space bar to continue",1);psy_draw_all_db();psy_wait(0,32);break;case 7:block_mixedTraining.step++,psy_clear_screen_db(),setTimeout("blocks"+psy_blockorder+".run()",0)}}},block_messagenumber2={blockname:"block_messagenumber2",
 step:1,trial_counter:0,start:function(){block_messagenumber2.step=1;current_block="block_messagenumber2";psy_clear_stimulus_counters_db();block_messagenumber2.run()},run:function(){current_block=block_messagenumber2.blockname;switch(block_messagenumber2.step){case 1:block_messagenumber2.step++;psy_wait(GeneralPreTestMesssage,32);break;case 2:block_messagenumber2.step++;psy_clear_screen_db();block_messagenumber2.run();break;case 3:block_messagenumber2.step++,setTimeout("blocks"+psy_blockorder+".run()",
-0)}}},block_lettersTesting={blockname:"block_lettersTesting",step:1,trial_counter:0,trial_counter_per_task:60,max_trials_in_block:999999,criteria_fullfilled:1,choosetask:0,roe:[!1],trials:[],current_trial:0,start:function(){block_lettersTesting.step=1;current_block="block_lettersTesting";this.trials=Array(60).fill(0);this.trials=psy_array_shuffle(this.trials);this.trials=this.trials.slice(0,60);psy_clear_stimulus_counters_db();block_lettersTesting.run()},run:function(){current_block=block_lettersTesting.blockname;
+0)}}},block_lettersTesting={blockname:"block_lettersTesting",step:1,trial_counter:0,trial_counter_per_task:60,max_trials_in_block:999999,criteria_fullfilled:1,choosetask:0,roe:[!1],trials:[],current_trial:0,start:function(){block_lettersTesting.step=1;current_block="block_lettersTesting";this.trials=Array(6).fill(0);this.trials=psy_array_shuffle(this.trials);this.trials=this.trials.slice(0,60);psy_clear_stimulus_counters_db();block_lettersTesting.run()},run:function(){current_block=block_lettersTesting.blockname;
 switch(block_lettersTesting.step){case 1:block_lettersTesting.step++;psy_wait(readyletters,32);break;case 2:block_lettersTesting.step++;psy_clear_screen_db();block_lettersTesting.run();break;case 3:block_lettersTesting.step++;previoustask=-1;setTimeout("block_lettersTesting.run()",0);break;case 4:block_lettersTesting.step++;taskswitch=0;setTimeout("block_lettersTesting.run()",0);break;case 5:block_lettersTesting.step++;justtask=1;setTimeout("block_lettersTesting.run()",0);break;case 6:block_lettersTesting.step++;
 psy_clear_screen_db();block_lettersTesting.max_trials_in_block=999999;block_lettersTesting.criteria_fullfilled=1;0<block_lettersTesting.criteria_fullfilled&&block_lettersTesting.trial_counter<=block_lettersTesting.max_trials_in_block?(block_lettersTesting.trial_counter++,this.current_trial=this.trials.shift(),task_lettersnumbers.start(this.current_trial)):setTimeout("block_lettersTesting.run()",0);break;case 7:block_lettersTesting.step++;block_lettersTesting.trial_counter_per_task--;0<error_status&&
 0<this.trials.length&&this.roe[0]&&(this.trials.unshift(this.current_trial),this.trials.pop());if(0==block_lettersTesting.trials.length||block_lettersTesting.trial_counter>=block_lettersTesting.max_trials_in_block||1==tasklist_end_request||1==experiment_end_request)tasklist_end_request=block_lettersTesting.criteria_fullfilled=0;1==block_lettersTesting.criteria_fullfilled&&(block_lettersTesting.step-=2);setTimeout("block_lettersTesting.run()",0);break;case 8:block_lettersTesting.step++,psy_clear_screen_db(),
-setTimeout("blocks"+psy_blockorder+".run()",0)}}},block_numbersTesting={blockname:"block_numbersTesting",step:1,trial_counter:0,trial_counter_per_task:60,max_trials_in_block:999999,criteria_fullfilled:1,choosetask:0,roe:[!1],trials:[],current_trial:0,start:function(){block_numbersTesting.step=1;current_block="block_numbersTesting";this.trials=Array(60).fill(0);this.trials=psy_array_shuffle(this.trials);this.trials=this.trials.slice(0,60);psy_clear_stimulus_counters_db();block_numbersTesting.run()},
+setTimeout("blocks"+psy_blockorder+".run()",0)}}},block_numbersTesting={blockname:"block_numbersTesting",step:1,trial_counter:0,trial_counter_per_task:60,max_trials_in_block:999999,criteria_fullfilled:1,choosetask:0,roe:[!1],trials:[],current_trial:0,start:function(){block_numbersTesting.step=1;current_block="block_numbersTesting";this.trials=Array(6).fill(0);this.trials=psy_array_shuffle(this.trials);this.trials=this.trials.slice(0,60);psy_clear_stimulus_counters_db();block_numbersTesting.run()},
 run:function(){current_block=block_numbersTesting.blockname;switch(block_numbersTesting.step){case 1:block_numbersTesting.step++;justtask=2;setTimeout("block_numbersTesting.run()",0);break;case 2:block_numbersTesting.step++;psy_wait(readynumbers,32);break;case 3:block_numbersTesting.step++;psy_clear_screen_db();block_numbersTesting.run();break;case 4:block_numbersTesting.step++;psy_clear_screen_db();block_numbersTesting.max_trials_in_block=999999;block_numbersTesting.criteria_fullfilled=1;0<block_numbersTesting.criteria_fullfilled&&
 block_numbersTesting.trial_counter<=block_numbersTesting.max_trials_in_block?(block_numbersTesting.trial_counter++,this.current_trial=this.trials.shift(),task_lettersnumbers.start(this.current_trial)):setTimeout("block_numbersTesting.run()",0);break;case 5:block_numbersTesting.step++;block_numbersTesting.trial_counter_per_task--;0<error_status&&0<this.trials.length&&this.roe[0]&&(this.trials.unshift(this.current_trial),this.trials.pop());if(0==block_numbersTesting.trials.length||block_numbersTesting.trial_counter>=
 block_numbersTesting.max_trials_in_block||1==tasklist_end_request||1==experiment_end_request)tasklist_end_request=block_numbersTesting.criteria_fullfilled=0;1==block_numbersTesting.criteria_fullfilled&&(block_numbersTesting.step-=2);setTimeout("block_numbersTesting.run()",0);break;case 6:block_numbersTesting.step++,psy_clear_screen_db(),setTimeout("blocks"+psy_blockorder+".run()",0)}}},block_mixedTesting={blockname:"block_mixedTesting",step:1,trial_counter:0,trial_counter_per_task:60,max_trials_in_block:999999,
-criteria_fullfilled:1,choosetask:0,roe:[!1],trials:[],current_trial:0,start:function(){block_mixedTesting.step=1;current_block="block_mixedTesting";this.trials=Array(60).fill(0);this.trials=psy_array_shuffle(this.trials);this.trials=this.trials.slice(0,60);psy_clear_stimulus_counters_db();block_mixedTesting.run()},run:function(){current_block=block_mixedTesting.blockname;switch(block_mixedTesting.step){case 1:block_mixedTesting.step++;justtask=0;setTimeout("block_mixedTesting.run()",0);break;case 2:block_mixedTesting.step++;
+criteria_fullfilled:1,choosetask:0,roe:[!1],trials:[],current_trial:0,start:function(){block_mixedTesting.step=1;current_block="block_mixedTesting";this.trials=Array(6).fill(0);this.trials=psy_array_shuffle(this.trials);this.trials=this.trials.slice(0,60);psy_clear_stimulus_counters_db();block_mixedTesting.run()},run:function(){current_block=block_mixedTesting.blockname;switch(block_mixedTesting.step){case 1:block_mixedTesting.step++;justtask=0;setTimeout("block_mixedTesting.run()",0);break;case 2:block_mixedTesting.step++;
 psy_wait(readylettersnumbers,32);break;case 3:block_mixedTesting.step++;psy_clear_screen_db();block_mixedTesting.run();break;case 4:block_mixedTesting.step++;psy_clear_screen_db();block_mixedTesting.max_trials_in_block=999999;block_mixedTesting.criteria_fullfilled=1;0<block_mixedTesting.criteria_fullfilled&&block_mixedTesting.trial_counter<=block_mixedTesting.max_trials_in_block?(block_mixedTesting.trial_counter++,this.current_trial=this.trials.shift(),task_lettersnumbers.start(this.current_trial)):
 setTimeout("block_mixedTesting.run()",0);break;case 5:block_mixedTesting.step++;block_mixedTesting.trial_counter_per_task--;0<error_status&&0<this.trials.length&&this.roe[0]&&(this.trials.unshift(this.current_trial),this.trials.pop());if(0==block_mixedTesting.trials.length||block_mixedTesting.trial_counter>=block_mixedTesting.max_trials_in_block||1==tasklist_end_request||1==experiment_end_request)tasklist_end_request=block_mixedTesting.criteria_fullfilled=0;1==block_mixedTesting.criteria_fullfilled&&
 (block_mixedTesting.step-=2);setTimeout("block_mixedTesting.run()",0);break;case 6:block_mixedTesting.step++;psy_clear_screen_db();datalines=outputdata.split("\n");var a=0,b=0,c=987654321,d=-987654321;for(tmpx=0;tmpx<datalines.length-1;tmpx++)datalinenumbers=datalines[tmpx].split(/ +/),1==parseInt(datalinenumbers[7])&0!=parseInt(datalinenumbers[5])&0==parseInt(datalinenumbers[6])&&(parseInt(datalinenumbers[8]),b+=parseInt(datalinenumbers[8]),parseInt(datalinenumbers[8])<c&&(c=parseInt(datalinenumbers[8])),

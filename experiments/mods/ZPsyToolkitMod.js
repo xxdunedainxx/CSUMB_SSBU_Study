@@ -12,14 +12,15 @@
   * Update: December 6, 2024:
     - Add Versioning to HTML Title
     - Automated stats upon experiment completion 
-  * Update: January 3, 2025 - fix automated stats bug? 
+  * Update: January 3, 2025 - fix automated stats bug?
+  * Update: February 4th, 2025 - Switch cost automated calculation.
 */ 
 
 // Semantic versioning for the app 
-VERSION="1.0.2"
+VERSION="1.0.3"
 
 /*
- * Simple utilityy function for downloading a document of a particular content type. 
+ * Simple utility function for downloading a document of a particular content type.
 */
 function downloadBlob(content, filename, contentType) {
   // Create a blob
@@ -228,6 +229,189 @@ function getExperimentToColumnNamesMap(experimentName){
 }
 
 /**
+  * Convert poorly formatted output data to a hash table
+  *     -- Easier to work with programatically
+**/
+function serializeOutputDataToTable(data, experimentName){
+    var dataFormatted = data.split("\n")
+    var rData = {
+        // Place data here
+    }
+
+    // KEYS OF THE HASH TABLE
+    var columnNameMapping = getExperimentToColumnNamesMap(experimentName)
+
+    // Initialize dictionary keys
+    for(var i = 0; i < columnNameMapping.length; i++){
+        rData[columnNameMapping[i]] = []
+    }
+
+    // Iterate each data entry
+    for(var i = 0; i < dataFormatted.length; i++){
+       var formatLineAsArray = dataFormatted[i].replace(/\s{2,}/g, ' ').split(" ")
+
+       // Iterate each column
+       for(var j = 0; j < formatLineAsArray.length; j++){
+            rData[columnNameMapping[j]].push(formatLineAsArray[j])
+       }
+    }
+
+    return rData
+}
+
+/**
+  * Calculate switch cost based on next trial
+**/
+function isSwitchTrial(trial){
+    // -- 1=task switch , 0=task repeat 'taskSwitchOrTaskRepeat' column
+    return trial == "1"
+}
+
+function isTrialCorrect(trial){
+    // -- status (1=correct, 2=error, 3=too slow)
+    return trial == "1"
+}
+
+function initialize2DArray(rows, cols) {
+  return Array.from({ length: rows }, () => Array(cols).fill(null));
+}
+
+/**
+  * Calculates the 'switch cost' of a task switching experiment
+  * If the current task is 'even' (say N=2),
+  *     -- we can calculate the switch cost as the difference between val(N) - (val(N-1))
+  *
+*/
+function calculateSwitchCost(data){
+    console.log("Calculate switch cost...")
+    console.log(data)
+    var dataSerialized = serializeOutputDataToTable(
+        data,
+        "TaskSwitching"
+    )
+
+    console.log(dataSerialized)
+
+    var switchCosts = {
+
+    }
+
+    // populate the table
+    for(var i = 0; i < dataSerialized["TaskSwitchTypeAndTestOrTrial"].length; i++){
+        if(dataSerialized["TaskSwitchTypeAndTestOrTrial"][i] in switchCosts == false){
+            switchCosts[dataSerialized["TaskSwitchTypeAndTestOrTrial"][i]]={
+                mean: 0
+            }
+        }
+    }
+
+    // Algo:
+    // - filter incorrect SWITCH trials
+    // - calculate on switch-repeat pairs
+    // -- 1=task switch , 0=task repeat 'taskSwitchOrTaskRepeat' column
+    // -- status (1=correct, 2=error, 3=too slow)
+    for(var i = 0; i < dataSerialized["responseTimeMs"].length; i++){
+        if(isSwitchTrial(dataSerialized["taskSwitchOrTaskRepeat"][i])
+        ){
+            // check [N+1] - (N)
+            var keyToUse = `${i}_cost`
+            if(isTrialCorrect(dataSerialized["status"][i])){
+            switchCosts[dataSerialized["TaskSwitchTypeAndTestOrTrial"][i]][keyToUse] = parseFloat(dataSerialized["responseTimeMs"][i] - dataSerialized["responseTimeMs"][i+1])
+            } else {
+                switchCosts[dataSerialized["TaskSwitchTypeAndTestOrTrial"][i]][keyToUse] = "INCORRECT"
+            }
+        }
+    }
+
+    // Gather the mean values
+    for (const [key, value] of Object.entries(switchCosts)) {
+        console.log(`${key}: ${value}`);
+        var total = 0
+        var numberOfEntries = 0
+
+        for (const [testEntryKey, testEntryValue] of Object.entries(switchCosts[key])) {
+          console.log(`${testEntryKey}: ${testEntryValue}`);
+
+
+          if(testEntryKey == "mean"){
+            continue
+          } else {
+             if(!isNaN(switchCosts[key][testEntryKey])){
+                numberOfEntries+=1
+                total+= switchCosts[key][testEntryKey]
+             }
+          }
+        }
+        console.log(`${total} vs # entries ${numberOfEntries}`)
+        switchCosts[key]["mean"] = (total / numberOfEntries)
+    }
+
+    // cache old map
+    var copyOfData = JSON.parse(JSON.stringify(switchCosts));
+
+    // Out dict to a CSV
+    var statsCsvName = "TaskSwitching_stats"
+    var csv = initialize2DArray(100,100)
+    // Create mean columns first and remove from map
+    var columnPointer = 0
+    var rowPointer = 0
+
+    // Initialize header first
+    for (const key of Object.keys(switchCosts)) {
+        var columnName = `${key}_mean`
+        csv[rowPointer][columnPointer] = columnName
+        columnPointer+=1
+    }
+
+    rowPointer+=1
+    columnPointer=0
+    for (const key of Object.keys(switchCosts)) {
+        console.log(switchCosts[key]['mean'])
+        csv[rowPointer][columnPointer] = switchCosts[key]['mean']
+        columnPointer+=1
+        delete switchCosts[key]['mean']
+    }
+
+    rowPointer = 0
+    // Now create columns for non-mean values
+    for (const key of Object.keys(switchCosts)) {
+        var columnName = `${key}_switchCosts`
+        csv[rowPointer][columnPointer] = columnName
+        rowPointer+=1
+        for(const trialKey of Object.keys(switchCosts[key])){
+            csv[rowPointer][columnPointer] = switchCosts[key][trialKey]
+            rowPointer+=1
+        }
+        rowPointer=0
+        columnPointer+=1
+
+    }
+
+    console.log("csv...")
+    console.log(csv)
+    var finalCsvString = ""
+    // Create the final CSV string
+    for(var i = 0; i < csv.length; i++){
+        for(var j = 0; j < csv[i].length; j++){
+            if(csv[i][j] != null){
+                finalCsvString+=`${csv[i][j]},`
+            } else {
+                finalCsvString+= ","
+            }
+        }
+        // new line per row
+        finalCsvString+="\n"
+    }
+    downloadBlob(
+        finalCsvString,
+        generateOutputFileName(statsCsvName),
+        'text/csv;charset=utf-8;'
+    )
+
+    return copyOfData
+}
+
+/**
   * If a user responds to no-go, count towards % of no-goes 
   * Remember JS is pass by reference for tables, s
   * so we can pass original data table and modify it!
@@ -288,79 +472,80 @@ function customStatsLogic(experimentName) {
   */
 function calculateAutomatedStats(experimentName, data){
 
-  var columnNameMapping = getExperimentToColumnNamesMap(experimentName)
+  if(experimentName == "TaskSwitching"){
+    return calculateSwitchCost(data)
+  } else{
+      var columnNameMapping = getExperimentToColumnNamesMap(experimentName)
 
-  var dataFormatted = data.split("\n")
-  
-  var customStatisLogic = customStatsLogic(experimentName)
+      var dataFormatted = data.split("\n")
 
-  console.log(customStatsLogic)
+      var customStatisLogic = customStatsLogic(experimentName)
 
-  // Stores the resultant data in a nice hash table :)
-  var dataToUse = {}
+      console.log(customStatsLogic)
 
-  for(var i = 0; i < dataFormatted.length; i++){
-    // Grab the row 
-    var splitUpRow = dataFormatted[i].replace(/\s{2,}/g, ' ').split(" ")
+      // Stores the resultant data in a nice hash table :)
+      var dataToUse = {}
 
-    // Get the 'category' of data
-    var dataCategory = splitUpRow[0].replaceAll("\"", "")
-    if(dataCategory === ""){
-      console.log("Empty string/garbage data, skipping..");
-    } else {
-      for(var j = 1; j < columnNameMapping.length; j++){
-        var dataKey = `${dataCategory}_${columnNameMapping[j]}`
-        var dataToAddCastToInt = parseInt(splitUpRow[j])
+      for(var i = 0; i < dataFormatted.length; i++){
+        // Grab the row
+        var splitUpRow = dataFormatted[i].replace(/\s{2,}/g, ' ').split(" ")
 
-        if(columnNameMapping[j] in customStatisLogic == true){
-          console.log(`Custom stats logic handler: ${columnNameMapping[j]} -- ${dataToAddCastToInt}`)
-          dataToUse = customStatisLogic[columnNameMapping[j]](
-            dataToAddCastToInt,
-            dataToUse,
-            dataCategory
-          )
+        // Get the 'category' of data
+        var dataCategory = splitUpRow[0].replaceAll("\"", "")
+        if(dataCategory === ""){
+          console.log("Empty string/garbage data, skipping..");
         } else {
+          for(var j = 1; j < columnNameMapping.length; j++){
+            var dataKey = `${dataCategory}_${columnNameMapping[j]}`
+            var dataToAddCastToInt = parseInt(splitUpRow[j])
 
-          if(dataKey in dataToUse == false) {
-            console.log("Add entry to dataToUse table..")
-            dataToUse[dataKey] = {
-              "mean" : 0,
-              "peakVal": null,
-              "minVal" : null,
-              "totalEntries" : 0
+            if(columnNameMapping[j] in customStatisLogic == true){
+              console.log(`Custom stats logic handler: ${columnNameMapping[j]} -- ${dataToAddCastToInt}`)
+              dataToUse = customStatisLogic[columnNameMapping[j]](
+                dataToAddCastToInt,
+                dataToUse,
+                dataCategory
+              )
+            } else {
+
+              if(dataKey in dataToUse == false) {
+                console.log("Add entry to dataToUse table..")
+                dataToUse[dataKey] = {
+                  "mean" : 0,
+                  "peakVal": null,
+                  "minVal" : null,
+                  "totalEntries" : 0
+                }
+              }
+
+              // Actual mean is calculated later. This is just to store the total.
+              dataToUse[dataKey]["mean"] += dataToAddCastToInt
+              dataToUse[dataKey]["totalEntries"] += 1
+
+              if(dataToUse[dataKey]["peakVal"] == null ||
+                dataToUse[dataKey]["peakVal"] < dataToAddCastToInt){
+                dataToUse[dataKey]["peakVal"] = dataToAddCastToInt
+              }
+
+              if(dataToUse[dataKey]["minVal"] == null ||
+                dataToUse[dataKey]["minVal"] > dataToAddCastToInt){
+                dataToUse[dataKey]["minVal"] = dataToAddCastToInt
+              }
             }
+
           }
-
-          // Actual mean is calculated later. This is just to store the total.
-          dataToUse[dataKey]["mean"] += dataToAddCastToInt
-          dataToUse[dataKey]["totalEntries"] += 1
-
-          if(dataToUse[dataKey]["peakVal"] == null || 
-            dataToUse[dataKey]["peakVal"] < dataToAddCastToInt){
-            dataToUse[dataKey]["peakVal"] = dataToAddCastToInt
-          }
-
-          if(dataToUse[dataKey]["minVal"] == null || 
-            dataToUse[dataKey]["minVal"] > dataToAddCastToInt){
-            dataToUse[dataKey]["minVal"] = dataToAddCastToInt
-          }
-
         }
-
       }
-    }
+
+      // Actually calculate the means
+      for (const key of Object.keys(dataToUse)) {
+        if("mean" in dataToUse[key]){
+          // dataToUse[key]["originalMean"] = dataToUse[key]["mean"]
+          dataToUse[key]["mean"] = (dataToUse[key]["mean"] / dataToUse[key]["totalEntries"])
+        }
+      }
+      return dataToUse
   }
-
-  // Actually calculate the means 
-  for (const key of Object.keys(dataToUse)) {
-    if("mean" in dataToUse[key]){
-      // dataToUse[key]["originalMean"] = dataToUse[key]["mean"] 
-      dataToUse[key]["mean"] = (dataToUse[key]["mean"] / dataToUse[key]["totalEntries"])
-    }
-  }
-
-
-  return dataToUse
 }
 
 /**
@@ -468,8 +653,9 @@ function initCustomDataLoader(experimentName){
           EXPERIMENT_NAME,
           outputdata
         );
-
-        createAutomatedStatsCSV(automatedStats, EXPERIMENT_NAME);
+        if(EXPERIMENT_NAME != "TaskSwitching"){
+            createAutomatedStatsCSV(automatedStats, EXPERIMENT_NAME);
+        }
     }
 
     // @Deprecated -- not needed? addFullScreenElement();
