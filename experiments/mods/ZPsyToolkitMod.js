@@ -15,16 +15,24 @@
   * Update: January 3, 2025 - fix automated stats bug?
   * Update: February 4th, 2025 - Switch cost automated calculation.
   * Update: February 8th, 2025 - Make trials configurable (ex demo site). 
+    - Go/No-go automated status enhancement. Deprecate old automated stats method 
+  * Update: February 8th, 2025 - Posner Stats 
 */ 
 
 // Semantic versioning for the app 
-VERSION="1.0.4"
+VERSION="1.0.5"
 
 // Store global vars 
 var GLOBAL_VARIABLE_STASH = {}
-var TOTAL_TRIALS_VAR = 60
-var SimpleReactionTrain = 10
+
+// Trial variables 
+var TOTAL_TRIALS_VAR = 60 // used by posner and task switch
+var SimpleReactionTrain = 10 // reaction time vars
 var SimpleReactionTest = 20 
+// go/no-go vars
+var GoTrials = 20
+var NoGoTrials = 5 
+
 
 /*
  * Simple utility function for downloading a document of a particular content type.
@@ -163,6 +171,10 @@ function getTotalTrials(experimentName){
     return SimpleReactionTrain
   } else if(experimentName == "SimpleReactionTest"){
     return SimpleReactionTest
+  } else if(experimentName == "GoTrials"){
+    return GoTrials
+  } else if(experimentName == "NoGoTrials"){
+    return NoGoTrials
   }
 }
 
@@ -171,24 +183,35 @@ function getTotalTrials(experimentName){
   *
 **/
 function parseHttpArgs(experimentName){
-    var selfReferenceURL = new URL(window.location.href);
+  var selfReferenceURL = new URL(window.location.href);
 
-    var trials = selfReferenceURL.searchParams.get("totalTrials")
-    if(trials != null) {
-      TOTAL_TRIALS_VAR = parseInt(trials)
-    } 
+  var trials = selfReferenceURL.searchParams.get("totalTrials")
+  if(trials != null) {
+    TOTAL_TRIALS_VAR = parseInt(trials)
+  } 
 
-    var simpleReactionTrain = selfReferenceURL.searchParams.get("simpleReactionTrain")
-    if(simpleReactionTrain != null){
-       SimpleReactionTrain = parseInt(simpleReactionTrain)
-       console.log(SimpleReactionTrain)
-    }
+  var simpleReactionTrain = selfReferenceURL.searchParams.get("simpleReactionTrain")
+  if(simpleReactionTrain != null){
+     SimpleReactionTrain = parseInt(simpleReactionTrain)
+     console.log(SimpleReactionTrain)
+  }
 
-    var simpleReactionTest = selfReferenceURL.searchParams.get("simpleReactionTest")
-    if(simpleReactionTest != null){
-      SimpleReactionTest = parseInt(simpleReactionTest)
-      console.log(SimpleReactionTest)
-    }
+  var simpleReactionTest = selfReferenceURL.searchParams.get("simpleReactionTest")
+  if(simpleReactionTest != null){
+    SimpleReactionTest = parseInt(simpleReactionTest)
+    console.log(SimpleReactionTest)
+  }
+
+  var goTrials = selfReferenceURL.searchParams.get("GoTrials")
+  if(goTrials != null){
+    GoTrials = goTrials
+  }
+
+  var noGoTrials = selfReferenceURL.searchParams.get("NoGoTrials")
+  if(noGoTrials != null){
+    NoGoTrials = noGoTrials
+  }
+
 }
 
 /**
@@ -383,41 +406,125 @@ function calculateSwitchCost(data){
     return copyOfData
 }
 
+
+function isErrorStatus(status){
+  return status == "1"
+}
+
 /**
+  * Automated Stats calculator for Go/No-go 
+**/ 
+function calculateGoNoGo(data) {
+  var dataSerialized = serializeOutputDataToTable(
+      data,
+      "GoNoGo"
+  )
+
+  var goNoGoTrainingTotal = 0 
+  var goNoGoTrainingTrials = 0 
+  var goNoGoTrainingMin = null 
+
+  var goNoGoTestingTotal = 0
+  var goNoGoTestingTrials = 0 
+  var goNoGoTestingMin = null 
+
+  // Count errors and divide by # of noGo
+  var errorCounterTraining = 0
+  var errorCounterTesting = 0
+
+
+  for(var i = 0; i < dataSerialized["ResponseTimeMs"].length; i++){
+    console.log(dataSerialized["ResponseTimeMs"][i])
+    var responseTimeParsed = parseFloat(dataSerialized["ResponseTimeMs"][i])
+
+    if(dataSerialized["GoNoGoAndTestOrTrial"][i] == '"goGoNoGoTraining"'){
+      goNoGoTrainingTotal+=responseTimeParsed
+      goNoGoTrainingTrials+=1
+      if(goNoGoTrainingMin == null || responseTimeParsed < goNoGoTrainingMin){
+        goNoGoTrainingMin = responseTimeParsed
+      }
+    } else if(dataSerialized["GoNoGoAndTestOrTrial"][i] == '"goGoNoGoTesting"'){
+      goNoGoTestingTotal+=responseTimeParsed
+      goNoGoTestingTrials+=1
+      if(goNoGoTestingMin == null || responseTimeParsed < goNoGoTestingMin){
+        goNoGoTestingMin = responseTimeParsed
+      }
+    } else if(dataSerialized["GoNoGoAndTestOrTrial"][i] == '"nogoGoNoGoTraining"') {
+      if(isErrorStatus(dataSerialized["ErrorStatus"][i])){
+        errorCounterTraining+=1
+      }
+    } else if(dataSerialized["GoNoGoAndTestOrTrial"][i] == '"nogoGoNoGoTesting"'){
+      if(isErrorStatus(dataSerialized["ErrorStatus"][i])){
+        errorCounterTesting+=1
+      }
+    } else {
+      console.log("Skip?")
+    }
+
+  }
+
+  // Craft the CSV 
+  var finalData = {
+    "avgErrorTraining": (errorCounterTraining / NoGoTrials),
+    "avgErrorTesting": (errorCounterTesting / NoGoTrials),
+    "goNoGoTestingMinResponseTimeMS": goNoGoTestingMin,
+    "goNoGoTrainingMinResponseTimeMS": goNoGoTrainingMin,
+    "goNoGoTrainingMean": (goNoGoTrainingTotal / goNoGoTrainingTrials),
+    "goNoGoTestingMean": (goNoGoTestingTotal / goNoGoTestingTrials)
+  }
+
+  var csv = "avgErrorTraining, avgErrorTesting, goNoGoTestingMinResponseTimeMS, goNoGoTrainingMinResponseTimeMS, goNoGoTrainingMean, goNoGoTestingMean\n"
+  csv    += `${finalData["avgErrorTraining"]},${finalData["avgErrorTesting"]},${finalData["goNoGoTestingMinResponseTimeMS"]},${finalData["goNoGoTrainingMinResponseTimeMS"]},${finalData["goNoGoTrainingMean"]},${finalData["goNoGoTestingMean"]},` 
+
+  downloadBlob(
+      csv,
+      generateOutputFileName("GoNoGoStats"),
+      'text/csv;charset=utf-8;'
+  )
+
+  return finalData
+}
+
+function calculatePosnerCueStats(data){
+  var dataSerialized = serializeOutputDataToTable(data)
+}
+
+/** @Deprecated
   * If a user responds to no-go, count towards % of no-goes 
   * Remember JS is pass by reference for tables, s
   * so we can pass original data table and modify it!
 */
-function goNoGoPercent(data, originalDataCollection, dataCategory) {
-  console.log(`${dataCategory} -- Go no go custom stat!! -- ${data} -- ${JSON.stringify(originalDataCollection)}`)
+// function goNoGoPercent(data, originalDataCollection, dataCategory) {
+//   console.log(`${dataCategory} -- Go no go custom stat!! -- ${data} -- ${JSON.stringify(originalDataCollection)}`)
   
-  // For no-gos, we want to track % of go vs no goes 
-  if(dataCategory.substr(0,4) == 'nogo'){
-    console.log("This is a no go trial")
-    var keyToUse = `CUSTOM_${dataCategory}_NoGoPercentCalculator`
+//   // For no-gos, we want to track % of go vs no goes 
+//   if(dataCategory.substr(0,4) == 'nogo'){
+//     console.log("This is a no go trial")
+//     var keyToUse = `CUSTOM_${dataCategory}_NoGoPercentCalculator`
 
-    if(keyToUse in originalDataCollection == false){
-      originalDataCollection[keyToUse] = {
-        "totalTrials" : 0,
-        "totalMisses" : 0,
-        "percentMisses":0
-      }
-    }
+//     if(keyToUse in originalDataCollection == false){
+//       originalDataCollection[keyToUse] = {
+//         "totalTrials" : 0,
+//         "totalMisses" : 0,
+//         "percentMisses":0
+//       }
+//     }
 
-    originalDataCollection[keyToUse]["totalTrials"] += 1
-    if(data == 1){
-      originalDataCollection[keyToUse]["totalMisses"] += 1
-    }
+//     originalDataCollection[keyToUse]["totalTrials"] += 1
+//     if(data == 1){
+//       originalDataCollection[keyToUse]["totalMisses"] += 1
+//     }
 
-    originalDataCollection[keyToUse]["percentMisses"] = originalDataCollection[keyToUse]["totalMisses"] / originalDataCollection[keyToUse]["totalTrials"] 
-  }
-  console.log(originalDataCollection)
-  return originalDataCollection
-}
+//     originalDataCollection[keyToUse]["percentMisses"] = originalDataCollection[keyToUse]["totalMisses"] / originalDataCollection[keyToUse]["totalTrials"] 
+//   }
+//   console.log(originalDataCollection)
+//   return originalDataCollection
+// }
 
+// @Deprecated
 // Custom stats thats effectively a 'null' function. Does nothing 
 // Intended for stats we want to skip. Not sure if we'll need or not. 
-function noOpSkipFunction(data, originalDataCollection, dataCategory){}
+// function noOpSkipFunction(data, originalDataCollection, dataCategory){}
 
 /**
   * Simple mapping for 'custom' statistics calculations.  
@@ -449,7 +556,9 @@ function calculateAutomatedStats(experimentName, data){
     return calculateSwitchCost(data)
   } else if(experimentName == "GoNoGo"){
     return calculateGoNoGo(data)
-  } 
+  } else if(experimentName == "PosnerCue"){
+    return calculatePosnerCueStats(data)
+  }
 
   // @Deprecated 
   // else{
@@ -527,47 +636,47 @@ function calculateAutomatedStats(experimentName, data){
   // }
 }
 
-/**
+/** @Deprecated 
   * Take data from 'calculateAutomatedStats' and format into a CSV. 
   * Afterwards push to client for download
   *
 */
-function createAutomatedStatsCSV(statsData, experimentName) {
+// function createAutomatedStatsCSV(statsData, experimentName) {
 
 
-  var csv = [
-    "",
-    ""
-  ]
+//   var csv = [
+//     "",
+//     ""
+//   ]
 
-  var statsCsvName = `${experimentName}_stats`
+//   var statsCsvName = `${experimentName}_stats`
 
-  // Bad this is hardcoded but o well.. 
-  // CSVs[normalStatsKey] = "mean, minVal, peakVal, totalEntries\n"
+//   // Bad this is hardcoded but o well.. 
+//   // CSVs[normalStatsKey] = "mean, minVal, peakVal, totalEntries\n"
 
-  for (const key of Object.keys(statsData)) {
-    // csv[0] += (Object.keys(statsData[key]).join(",") + "\n")
-    var keysToAdd = ""
-    var valsToAdd = ""
-    for(const dataKey of Object.keys(statsData[key])){
-      keysToAdd += `${key}_${dataKey},`
-      valsToAdd += `${statsData[key][dataKey]},`
-    }
+//   for (const key of Object.keys(statsData)) {
+//     // csv[0] += (Object.keys(statsData[key]).join(",") + "\n")
+//     var keysToAdd = ""
+//     var valsToAdd = ""
+//     for(const dataKey of Object.keys(statsData[key])){
+//       keysToAdd += `${key}_${dataKey},`
+//       valsToAdd += `${statsData[key][dataKey]},`
+//     }
 
-    csv[0] += keysToAdd
-    csv[1] += valsToAdd
-  }
+//     csv[0] += keysToAdd
+//     csv[1] += valsToAdd
+//   }
 
-  console.log(csv)
+//   console.log(csv)
   
-  var finalCsv = (csv[0] + "\n" + csv[1])
+//   var finalCsv = (csv[0] + "\n" + csv[1])
 
-  downloadBlob(
-    finalCsv, 
-    generateOutputFileName(statsCsvName), 
-    'text/csv;charset=utf-8;'
-  )  
-}
+//   downloadBlob(
+//     finalCsv, 
+//     generateOutputFileName(statsCsvName), 
+//     'text/csv;charset=utf-8;'
+//   )  
+// }
 
 /*
  * Add collumn identifiers based on experiment name 
@@ -635,9 +744,10 @@ function initCustomDataLoader(experimentName){
           EXPERIMENT_NAME,
           outputdata
         );
-        if(EXPERIMENT_NAME != "TaskSwitching"){
-            createAutomatedStatsCSV(automatedStats, EXPERIMENT_NAME);
-        }
+        // @Deprecated 
+        // if(EXPERIMENT_NAME != "TaskSwitching"){
+        //     createAutomatedStatsCSV(automatedStats, EXPERIMENT_NAME);
+        // }
     }
 }
 
