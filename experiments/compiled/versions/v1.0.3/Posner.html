@@ -17,22 +17,14 @@
   * Update: December 6, 2024:
     - Add Versioning to HTML Title
     - Automated stats upon experiment completion 
-  * Update: January 3, 2025 - fix automated stats bug?
-  * Update: February 4th, 2025 - Switch cost automated calculation.
-  * Update: February 8th, 2025 - Make trials configurable (ex demo site). 
+  * Update: January 3, 2025 - fix automated stats bug? 
 */ 
 
 // Semantic versioning for the app 
-VERSION="1.0.4"
-
-// Store global vars 
-var GLOBAL_VARIABLE_STASH = {}
-var TOTAL_TRIALS_VAR = 60
-var SimpleReactionTrain = 10
-var SimpleReactionTest = 20 
+VERSION="1.0.2"
 
 /*
- * Simple utility function for downloading a document of a particular content type.
+ * Simple utilityy function for downloading a document of a particular content type. 
 */
 function downloadBlob(content, filename, contentType) {
   // Create a blob
@@ -241,237 +233,6 @@ function getExperimentToColumnNamesMap(experimentName){
 }
 
 /**
-  * Get total trials for the experiment 
-**/
-function getTotalTrials(experimentName){
-  if(experimentName == "TaskSwitching" || experimentName == "PosnerCue"){
-    console.log(`Total Trials: ${TOTAL_TRIALS_VAR}`)
-    return TOTAL_TRIALS_VAR
-  } else if(experimentName == "SimpleReactionTrain"){
-    return SimpleReactionTrain
-  } else if(experimentName == "SimpleReactionTest"){
-    return SimpleReactionTest
-  }
-}
-
-/**
-  * Parse relevant HTTP args 
-  *
-**/
-function parseHttpArgs(experimentName){
-    var selfReferenceURL = new URL(window.location.href);
-
-    var trials = selfReferenceURL.searchParams.get("totalTrials")
-    if(trials != null) {
-      TOTAL_TRIALS_VAR = parseInt(trials)
-    } 
-
-    var simpleReactionTrain = selfReferenceURL.searchParams.get("simpleReactionTrain")
-    if(simpleReactionTrain != null){
-       SimpleReactionTrain = parseInt(simpleReactionTrain)
-       console.log(SimpleReactionTrain)
-    }
-
-    var simpleReactionTest = selfReferenceURL.searchParams.get("simpleReactionTest")
-    if(simpleReactionTest != null){
-      SimpleReactionTest = parseInt(simpleReactionTest)
-      console.log(SimpleReactionTest)
-    }
-}
-
-/**
-  * Initialize relevant global vars 
-*/ 
-function initGlobalVariableStash(experimentName){
-    console.log("Global variables stash init")
-    parseHttpArgs(experimentName)
-}
-
-
-/**
-  * Convert poorly formatted output data to a hash table
-  *     -- Easier to work with programatically
-**/
-function serializeOutputDataToTable(data, experimentName){
-    var dataFormatted = data.split("\n")
-    var rData = {
-        // Place data here
-    }
-
-    // KEYS OF THE HASH TABLE
-    var columnNameMapping = getExperimentToColumnNamesMap(experimentName)
-
-    // Initialize dictionary keys
-    for(var i = 0; i < columnNameMapping.length; i++){
-        rData[columnNameMapping[i]] = []
-    }
-
-    // Iterate each data entry
-    for(var i = 0; i < dataFormatted.length; i++){
-       var formatLineAsArray = dataFormatted[i].replace(/\s{2,}/g, ' ').split(" ")
-
-       // Iterate each column
-       for(var j = 0; j < formatLineAsArray.length; j++){
-            rData[columnNameMapping[j]].push(formatLineAsArray[j])
-       }
-    }
-
-    return rData
-}
-
-/**
-  * Calculate switch cost based on next trial
-**/
-function isSwitchTrial(trial){
-    // -- 1=task switch , 0=task repeat 'taskSwitchOrTaskRepeat' column
-    return trial == "1"
-}
-
-function isTrialCorrect(trial){
-    // -- status (1=correct, 2=error, 3=too slow)
-    return trial == "1"
-}
-
-function initialize2DArray(rows, cols) {
-  return Array.from({ length: rows }, () => Array(cols).fill(null));
-}
-
-/**
-  * Calculates the 'switch cost' of a task switching experiment
-  * If the current task is 'even' (say N=2),
-  *     -- we can calculate the switch cost as the difference between val(N) - (val(N-1))
-  *
-*/
-function calculateSwitchCost(data){
-    console.log("Calculate switch cost...")
-    console.log(data)
-    var dataSerialized = serializeOutputDataToTable(
-        data,
-        "TaskSwitching"
-    )
-
-    console.log(dataSerialized)
-
-    var switchCosts = {
-
-    }
-
-    // populate the table
-    for(var i = 0; i < dataSerialized["TaskSwitchTypeAndTestOrTrial"].length; i++){
-        if(dataSerialized["TaskSwitchTypeAndTestOrTrial"][i] in switchCosts == false){
-            switchCosts[dataSerialized["TaskSwitchTypeAndTestOrTrial"][i]]={
-                mean: 0
-            }
-        }
-    }
-
-    // Algo:
-    // - filter incorrect SWITCH trials
-    // - calculate on switch-repeat pairs
-    // -- 1=task switch , 0=task repeat 'taskSwitchOrTaskRepeat' column
-    // -- status (1=correct, 2=error, 3=too slow)
-    for(var i = 0; i < dataSerialized["responseTimeMs"].length; i++){
-        if(isSwitchTrial(dataSerialized["taskSwitchOrTaskRepeat"][i])
-        ){
-            // check [N+1] - (N)
-            var keyToUse = `${i}_cost`
-            if(isTrialCorrect(dataSerialized["status"][i])){
-            switchCosts[dataSerialized["TaskSwitchTypeAndTestOrTrial"][i]][keyToUse] = parseFloat(dataSerialized["responseTimeMs"][i] - dataSerialized["responseTimeMs"][i+1])
-            } else {
-                switchCosts[dataSerialized["TaskSwitchTypeAndTestOrTrial"][i]][keyToUse] = "INCORRECT"
-            }
-        }
-    }
-
-    // Gather the mean values
-    for (const [key, value] of Object.entries(switchCosts)) {
-        console.log(`${key}: ${value}`);
-        var total = 0
-        var numberOfEntries = 0
-
-        for (const [testEntryKey, testEntryValue] of Object.entries(switchCosts[key])) {
-          console.log(`${testEntryKey}: ${testEntryValue}`);
-
-
-          if(testEntryKey == "mean"){
-            continue
-          } else {
-             if(!isNaN(switchCosts[key][testEntryKey])){
-                numberOfEntries+=1
-                total+= switchCosts[key][testEntryKey]
-             }
-          }
-        }
-        console.log(`${total} vs # entries ${numberOfEntries}`)
-        switchCosts[key]["mean"] = (total / numberOfEntries)
-    }
-
-    // cache old map
-    var copyOfData = JSON.parse(JSON.stringify(switchCosts));
-
-    // Out dict to a CSV
-    var statsCsvName = "TaskSwitching_stats"
-    var csv = initialize2DArray(100,100)
-    // Create mean columns first and remove from map
-    var columnPointer = 0
-    var rowPointer = 0
-
-    // Initialize header first
-    for (const key of Object.keys(switchCosts)) {
-        var columnName = `${key}_mean`
-        csv[rowPointer][columnPointer] = columnName
-        columnPointer+=1
-    }
-
-    rowPointer+=1
-    columnPointer=0
-    for (const key of Object.keys(switchCosts)) {
-        console.log(switchCosts[key]['mean'])
-        csv[rowPointer][columnPointer] = switchCosts[key]['mean']
-        columnPointer+=1
-        delete switchCosts[key]['mean']
-    }
-
-    rowPointer = 0
-    // Now create columns for non-mean values
-    for (const key of Object.keys(switchCosts)) {
-        var columnName = `${key}_switchCosts`
-        csv[rowPointer][columnPointer] = columnName
-        rowPointer+=1
-        for(const trialKey of Object.keys(switchCosts[key])){
-            csv[rowPointer][columnPointer] = switchCosts[key][trialKey]
-            rowPointer+=1
-        }
-        rowPointer=0
-        columnPointer+=1
-
-    }
-
-    console.log("csv...")
-    console.log(csv)
-    var finalCsvString = ""
-    // Create the final CSV string
-    for(var i = 0; i < csv.length; i++){
-        for(var j = 0; j < csv[i].length; j++){
-            if(csv[i][j] != null){
-                finalCsvString+=`${csv[i][j]},`
-            } else {
-                finalCsvString+= ","
-            }
-        }
-        // new line per row
-        finalCsvString+="\n"
-    }
-    downloadBlob(
-        finalCsvString,
-        generateOutputFileName(statsCsvName),
-        'text/csv;charset=utf-8;'
-    )
-
-    return copyOfData
-}
-
-/**
   * If a user responds to no-go, count towards % of no-goes 
   * Remember JS is pass by reference for tables, s
   * so we can pass original data table and modify it!
@@ -532,80 +293,79 @@ function customStatsLogic(experimentName) {
   */
 function calculateAutomatedStats(experimentName, data){
 
-  if(experimentName == "TaskSwitching"){
-    return calculateSwitchCost(data)
-  } else{
-      var columnNameMapping = getExperimentToColumnNamesMap(experimentName)
+  var columnNameMapping = getExperimentToColumnNamesMap(experimentName)
 
-      var dataFormatted = data.split("\n")
+  var dataFormatted = data.split("\n")
+  
+  var customStatisLogic = customStatsLogic(experimentName)
 
-      var customStatisLogic = customStatsLogic(experimentName)
+  console.log(customStatsLogic)
 
-      console.log(customStatsLogic)
+  // Stores the resultant data in a nice hash table :)
+  var dataToUse = {}
 
-      // Stores the resultant data in a nice hash table :)
-      var dataToUse = {}
+  for(var i = 0; i < dataFormatted.length; i++){
+    // Grab the row 
+    var splitUpRow = dataFormatted[i].replace(/\s{2,}/g, ' ').split(" ")
 
-      for(var i = 0; i < dataFormatted.length; i++){
-        // Grab the row
-        var splitUpRow = dataFormatted[i].replace(/\s{2,}/g, ' ').split(" ")
+    // Get the 'category' of data
+    var dataCategory = splitUpRow[0].replaceAll("\"", "")
+    if(dataCategory === ""){
+      console.log("Empty string/garbage data, skipping..");
+    } else {
+      for(var j = 1; j < columnNameMapping.length; j++){
+        var dataKey = `${dataCategory}_${columnNameMapping[j]}`
+        var dataToAddCastToInt = parseInt(splitUpRow[j])
 
-        // Get the 'category' of data
-        var dataCategory = splitUpRow[0].replaceAll("\"", "")
-        if(dataCategory === ""){
-          console.log("Empty string/garbage data, skipping..");
+        if(columnNameMapping[j] in customStatisLogic == true){
+          console.log(`Custom stats logic handler: ${columnNameMapping[j]} -- ${dataToAddCastToInt}`)
+          dataToUse = customStatisLogic[columnNameMapping[j]](
+            dataToAddCastToInt,
+            dataToUse,
+            dataCategory
+          )
         } else {
-          for(var j = 1; j < columnNameMapping.length; j++){
-            var dataKey = `${dataCategory}_${columnNameMapping[j]}`
-            var dataToAddCastToInt = parseInt(splitUpRow[j])
 
-            if(columnNameMapping[j] in customStatisLogic == true){
-              console.log(`Custom stats logic handler: ${columnNameMapping[j]} -- ${dataToAddCastToInt}`)
-              dataToUse = customStatisLogic[columnNameMapping[j]](
-                dataToAddCastToInt,
-                dataToUse,
-                dataCategory
-              )
-            } else {
-
-              if(dataKey in dataToUse == false) {
-                console.log("Add entry to dataToUse table..")
-                dataToUse[dataKey] = {
-                  "mean" : 0,
-                  "peakVal": null,
-                  "minVal" : null,
-                  "totalEntries" : 0
-                }
-              }
-
-              // Actual mean is calculated later. This is just to store the total.
-              dataToUse[dataKey]["mean"] += dataToAddCastToInt
-              dataToUse[dataKey]["totalEntries"] += 1
-
-              if(dataToUse[dataKey]["peakVal"] == null ||
-                dataToUse[dataKey]["peakVal"] < dataToAddCastToInt){
-                dataToUse[dataKey]["peakVal"] = dataToAddCastToInt
-              }
-
-              if(dataToUse[dataKey]["minVal"] == null ||
-                dataToUse[dataKey]["minVal"] > dataToAddCastToInt){
-                dataToUse[dataKey]["minVal"] = dataToAddCastToInt
-              }
+          if(dataKey in dataToUse == false) {
+            console.log("Add entry to dataToUse table..")
+            dataToUse[dataKey] = {
+              "mean" : 0,
+              "peakVal": null,
+              "minVal" : null,
+              "totalEntries" : 0
             }
-
           }
-        }
-      }
 
-      // Actually calculate the means
-      for (const key of Object.keys(dataToUse)) {
-        if("mean" in dataToUse[key]){
-          // dataToUse[key]["originalMean"] = dataToUse[key]["mean"]
-          dataToUse[key]["mean"] = (dataToUse[key]["mean"] / dataToUse[key]["totalEntries"])
+          // Actual mean is calculated later. This is just to store the total.
+          dataToUse[dataKey]["mean"] += dataToAddCastToInt
+          dataToUse[dataKey]["totalEntries"] += 1
+
+          if(dataToUse[dataKey]["peakVal"] == null || 
+            dataToUse[dataKey]["peakVal"] < dataToAddCastToInt){
+            dataToUse[dataKey]["peakVal"] = dataToAddCastToInt
+          }
+
+          if(dataToUse[dataKey]["minVal"] == null || 
+            dataToUse[dataKey]["minVal"] > dataToAddCastToInt){
+            dataToUse[dataKey]["minVal"] = dataToAddCastToInt
+          }
+
         }
+
       }
-      return dataToUse
+    }
   }
+
+  // Actually calculate the means 
+  for (const key of Object.keys(dataToUse)) {
+    if("mean" in dataToUse[key]){
+      // dataToUse[key]["originalMean"] = dataToUse[key]["mean"] 
+      dataToUse[key]["mean"] = (dataToUse[key]["mean"] / dataToUse[key]["totalEntries"])
+    }
+  }
+
+
+  return dataToUse
 }
 
 /**
@@ -663,9 +423,6 @@ function addCollumnsToOutputData(experimentName, data) {
 
 }
 
-/**
-  * Adds version to title of site 
-**/
 function addVersion(version) {
   document.getElementsByTagName("title")[0].innerText = `v${version}; CSUMB SSB Study`
 }
@@ -716,9 +473,8 @@ function initCustomDataLoader(experimentName){
           EXPERIMENT_NAME,
           outputdata
         );
-        if(EXPERIMENT_NAME != "TaskSwitching"){
-            createAutomatedStatsCSV(automatedStats, EXPERIMENT_NAME);
-        }
+
+        createAutomatedStatsCSV(automatedStats, EXPERIMENT_NAME);
     }
 
     // @Deprecated -- not needed? addFullScreenElement();
@@ -734,9 +490,6 @@ function loadZehPlugin(experimentName) {
 
   // Adds  the version 
   addVersion(VERSION);
-
-  // Initialize any required globals
-  initGlobalVariableStash(experimentName)
 
   // Laod the custom welcome image 
   loadWelcomeImageBitMap();
@@ -946,7 +699,7 @@ var t_cueingtable=[new cueingtabletype("cueleft  targetleft valid     cued 1",-2
 psy_delay(75);break;case 5:task_cueingtask.step++;psy_clear_stimuli1(4);psy_clear_stimuli1(5);psy_draw_all_db();psy_add_centered_bitmap_db(fixpoint2,PSY_CENTRAL,PSY_CENTRAL,0);psy_draw_all_db();psy_delay(75);break;case 6:task_cueingtask.step++;psy_clear_stimuli1(6);psy_draw_all_db();psy_add_centered_bitmap_db(fixpoint1,PSY_CENTRAL,PSY_CENTRAL,0);psy_draw_all_db();psy_delay(200);break;case 7:task_cueingtask.step++;psy_add_centered_bitmap_db(cuesignal,t_cueingtable[tablerow].c2,0,0);psy_draw_all_db();
 psy_delay(75);break;case 8:task_cueingtask.step++;psy_clear_stimuli1(-1);psy_draw_all_db();psy_delay(75);break;case 9:task_cueingtask.step++;psy_add_centered_bitmap_db(gosignal,t_cueingtable[tablerow].c3,0,0);psy_draw_all_db();psy_keyboard(possiblekeys,2,t_cueingtable[tablerow].c4-1,1500);break;case 10:task_cueingtask.step++;psy_clear_stimuli1(-1);psy_draw_all_db();1==keystatus.status&&(task_cueingtask.step=13);task_cueingtask.run();break;case 11:task_cueingtask.step++;psy_add_centered_bitmap_db(mistakefeedback,
 0,200,0);psy_draw_all_db();psy_delay(2E3);break;case 12:task_cueingtask.step++;psy_clear_stimuli1(-1);psy_draw_all_db();task_cueingtask.run();break;case 13:task_cueingtask.step++,addoutput(current_block.substring(6,current_block.length)+" "+t_cueingtable[tablerow].c1+" "+keystatus.time+" "+keystatus.status),setTimeout(current_block+".run()",0)}}},block_cueingBlockTraining={blockname:"block_cueingBlockTraining",step:1,trial_counter:0,trial_counter_per_task:100,max_trials_in_block:999999,criteria_fullfilled:1,
-choosetask:0,roe:[!1],trials:[],current_trial:0,start:function(){block_cueingBlockTraining.step=1;current_block="block_cueingBlockTraining";this.trials=Array(getTotalTrials("PosnerCue")).fill([].concat($jscomp.arrayFromIterable(Array(8).keys())).map(function(a){return++a})).flat();this.trials=psy_array_shuffle(this.trials);this.trials=this.trials.slice(0,100);psy_clear_stimulus_counters_db();block_cueingBlockTraining.run()},run:function(){current_block=block_cueingBlockTraining.blockname;switch(block_cueingBlockTraining.step){case 1:block_cueingBlockTraining.step++;
+choosetask:0,roe:[!1],trials:[],current_trial:0,start:function(){block_cueingBlockTraining.step=1;current_block="block_cueingBlockTraining";this.trials=Array(13).fill([].concat($jscomp.arrayFromIterable(Array(8).keys())).map(function(a){return++a})).flat();this.trials=psy_array_shuffle(this.trials);this.trials=this.trials.slice(0,100);psy_clear_stimulus_counters_db();block_cueingBlockTraining.run()},run:function(){current_block=block_cueingBlockTraining.blockname;switch(block_cueingBlockTraining.step){case 1:block_cueingBlockTraining.step++;
 psy_wait(instruction,32);break;case 2:block_cueingBlockTraining.step++;psy_clear_screen_db();block_cueingBlockTraining.run();break;case 3:block_cueingBlockTraining.step++;psy_wait(GeneralTrialMessage,32);break;case 4:block_cueingBlockTraining.step++;psy_clear_screen_db();block_cueingBlockTraining.run();break;case 5:block_cueingBlockTraining.step++;psy_clear_screen_db();block_cueingBlockTraining.max_trials_in_block=999999;block_cueingBlockTraining.criteria_fullfilled=1;0<block_cueingBlockTraining.criteria_fullfilled&&
 block_cueingBlockTraining.trial_counter<=block_cueingBlockTraining.max_trials_in_block?(block_cueingBlockTraining.trial_counter++,this.current_trial=this.trials.shift(),task_cueingtask.start(this.current_trial)):setTimeout("block_cueingBlockTraining.run()",0);break;case 6:block_cueingBlockTraining.step++;block_cueingBlockTraining.trial_counter_per_task--;0<error_status&&0<this.trials.length&&this.roe[0]&&(this.trials.unshift(this.current_trial),this.trials.pop());if(0==block_cueingBlockTraining.trials.length||
 block_cueingBlockTraining.trial_counter>=block_cueingBlockTraining.max_trials_in_block||1==tasklist_end_request||1==experiment_end_request)tasklist_end_request=block_cueingBlockTraining.criteria_fullfilled=0;1==block_cueingBlockTraining.criteria_fullfilled&&(block_cueingBlockTraining.step-=2);setTimeout("block_cueingBlockTraining.run()",0);break;case 7:block_cueingBlockTraining.step++;psy_clear_screen_db();psy_clear_stimulus_counters_db();psy_add_centered_bitmap_db(afterwords,PSY_CENTRAL,PSY_CENTRAL);
@@ -955,7 +708,7 @@ parseInt(datalinenumbers[6])>d&&(d=parseInt(datalinenumbers[6])),a++);RTvalid=0<
 a++);RTinvalid=0<a?Math.round(b/a):0;psy_add_text_rgb_db(1,-300,0,PSY_CENTRAL,PSY_CENTRAL,255,255,255,"Response time (ms)",1);psy_draw_all_db();tmptext="Valid cue conditions:    "+RTvalid+" ms";psy_add_text_rgb_db(1,-300,50,PSY_CENTRAL,PSY_CENTRAL,255,255,255,tmptext,1);psy_draw_all_db();tmptext="Invalid cue conditions:  "+RTinvalid+" ms";psy_add_text_rgb_db(1,-300,100,PSY_CENTRAL,PSY_CENTRAL,255,255,255,tmptext,1);psy_draw_all_db();psy_add_text_rgb_db(1,-300,250,PSY_CENTRAL,PSY_CENTRAL,255,255,255,
 "Press space bar to continue",1);psy_draw_all_db();psy_wait(0,32);break;case 10:block_cueingBlockTraining.step++,psy_clear_screen_db(),setTimeout("blocks"+psy_blockorder+".run()",0)}}},block_messagenumber1={blockname:"block_messagenumber1",step:1,trial_counter:0,start:function(){block_messagenumber1.step=1;current_block="block_messagenumber1";psy_clear_stimulus_counters_db();block_messagenumber1.run()},run:function(){current_block=block_messagenumber1.blockname;switch(block_messagenumber1.step){case 1:block_messagenumber1.step++;
 psy_wait(GeneralPreTestMesssage,32);break;case 2:block_messagenumber1.step++;psy_clear_screen_db();block_messagenumber1.run();break;case 3:block_messagenumber1.step++,setTimeout("blocks"+psy_blockorder+".run()",0)}}},block_cueingBlockTesting={blockname:"block_cueingBlockTesting",step:1,trial_counter:0,trial_counter_per_task:100,max_trials_in_block:999999,criteria_fullfilled:1,choosetask:0,roe:[!1],trials:[],current_trial:0,start:function(){block_cueingBlockTesting.step=1;current_block="block_cueingBlockTesting";
-this.trials=Array(getTotalTrials("PosnerCue")).fill([].concat($jscomp.arrayFromIterable(Array(8).keys())).map(function(a){return++a})).flat();this.trials=psy_array_shuffle(this.trials);this.trials=this.trials.slice(0,100);psy_clear_stimulus_counters_db();block_cueingBlockTesting.run()},run:function(){current_block=block_cueingBlockTesting.blockname;switch(block_cueingBlockTesting.step){case 1:block_cueingBlockTesting.step++;psy_clear_screen_db();block_cueingBlockTesting.max_trials_in_block=999999;block_cueingBlockTesting.criteria_fullfilled=
+this.trials=Array(13).fill([].concat($jscomp.arrayFromIterable(Array(8).keys())).map(function(a){return++a})).flat();this.trials=psy_array_shuffle(this.trials);this.trials=this.trials.slice(0,100);psy_clear_stimulus_counters_db();block_cueingBlockTesting.run()},run:function(){current_block=block_cueingBlockTesting.blockname;switch(block_cueingBlockTesting.step){case 1:block_cueingBlockTesting.step++;psy_clear_screen_db();block_cueingBlockTesting.max_trials_in_block=999999;block_cueingBlockTesting.criteria_fullfilled=
 1;0<block_cueingBlockTesting.criteria_fullfilled&&block_cueingBlockTesting.trial_counter<=block_cueingBlockTesting.max_trials_in_block?(block_cueingBlockTesting.trial_counter++,this.current_trial=this.trials.shift(),task_cueingtask.start(this.current_trial)):setTimeout("block_cueingBlockTesting.run()",0);break;case 2:block_cueingBlockTesting.step++;block_cueingBlockTesting.trial_counter_per_task--;0<error_status&&0<this.trials.length&&this.roe[0]&&(this.trials.unshift(this.current_trial),this.trials.pop());
 if(0==block_cueingBlockTesting.trials.length||block_cueingBlockTesting.trial_counter>=block_cueingBlockTesting.max_trials_in_block||1==tasklist_end_request||1==experiment_end_request)tasklist_end_request=block_cueingBlockTesting.criteria_fullfilled=0;1==block_cueingBlockTesting.criteria_fullfilled&&(block_cueingBlockTesting.step-=2);setTimeout("block_cueingBlockTesting.run()",0);break;case 3:block_cueingBlockTesting.step++;psy_clear_screen_db();psy_clear_stimulus_counters_db();psy_add_centered_bitmap_db(afterwords,
 PSY_CENTRAL,PSY_CENTRAL);psy_draw_all_db();psy_wait(0,32);break;case 4:block_cueingBlockTesting.step++;psy_clear_screen_db();block_cueingBlockTesting.run();break;case 5:block_cueingBlockTesting.step++;datalines=outputdata.split("\n");var a=0,b=0,c=987654321,d=-987654321;for(tmpx=0;tmpx<datalines.length-1;tmpx++)datalinenumbers=datalines[tmpx].split(/ +/),1==parseInt(datalinenumbers[7])&1==parseInt(datalinenumbers[5])&&(parseInt(datalinenumbers[6]),b+=parseInt(datalinenumbers[6]),parseInt(datalinenumbers[6])<

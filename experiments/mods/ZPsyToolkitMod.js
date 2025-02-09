@@ -14,10 +14,17 @@
     - Automated stats upon experiment completion 
   * Update: January 3, 2025 - fix automated stats bug?
   * Update: February 4th, 2025 - Switch cost automated calculation.
+  * Update: February 8th, 2025 - Make trials configurable (ex demo site). 
 */ 
 
 // Semantic versioning for the app 
-VERSION="1.0.3"
+VERSION="1.0.4"
+
+// Store global vars 
+var GLOBAL_VARIABLE_STASH = {}
+var TOTAL_TRIALS_VAR = 60
+var SimpleReactionTrain = 10
+var SimpleReactionTest = 20 
 
 /*
  * Simple utility function for downloading a document of a particular content type.
@@ -34,33 +41,6 @@ function downloadBlob(content, filename, contentType) {
   pom.click();
 }
 
-/**
-  * @Deprecated
-  *
-  * Dont need this, we can just pull the raw data stored in memory, 
-  *   instead of extracting it from the table 
-*/
-function tableToCSV() {
- 
-    let DATA_TO_OUTPUT = [];
-    var data = document.getElementById("showdata")
-    let rows = data.getElementsByTagName('tr');
-    for (let i = 0; i < rows.length; i++) {
-         let cols = rows[i].querySelectorAll('td,th');
-         let csvrow = [];
-        for (let j = 0; j < cols.length; j++) {
-            csvrow.push(cols[j].innerHTML);
-        }
-         DATA_TO_OUTPUT.push(csvrow.join(","));
-    }
-    DATA_TO_OUTPUT = DATA_TO_OUTPUT.join('\n');
-    console.log(DATA_TO_OUTPUT)
-    downloadBlob(
-      DATA_TO_OUTPUT, 
-      "results.csv", 
-      'text/csv;charset=utf-8;'
-    )
-}
 
 /**
  * Generates a Formatted, and (hopefully) unique file name, based on the current date.
@@ -87,62 +67,6 @@ function outputDataToCSV(data, outputFileName) {
       generateOutputFileName(outputFileName), 
       'text/csv;charset=utf-8;'
     )  
-}
-
-/*
- * @Deprecated - This fucks things up :(
- * This function is missing in the 'local' version of the compiled experiments
- * Directly pulled/shadowed from psytoolkit
- */
-function psy_screen_scale(a, b) {
-    a = void 0 === a ? 0 : a;
-    b = void 0 === b ? !1 : b;
-    var c = document.getElementById("cbox")
-      , d = document.getElementById("exp");
-    if (b || document.fullscreenElement || document.webkitFullscreenElement) {
-        b = window.screen.width / psy_screen_width;
-        var e = window.screen.height / psy_screen_height;
-        c.style.width = parseInt(window.screen.width) + "px";
-        c.style.height = parseInt(window.screen.height) + "px";
-        c.style.overflow = "hidden"
-    } else
-        c.style.width = psy_frame_w + "px",
-        c.style.height = psy_frame_h + "px",
-        c.style.overflow = "hidden",
-        c.style.display = "flex",
-        c.style.alignItems = "center",
-        c.style.justifyContent = "center",
-        b = parseInt(c.style.width) / psy_screen_width,
-        e = parseInt(c.style.height) / psy_screen_height;
-    1 == a && (d.style.transform = "scale(" + Math.min(b, e).toFixed(2) + "," + Math.min(b, e).toFixed(2) + ")");
-    2 == a && (d.style.transform = "scale(" + Math.min(b).toFixed(2) + "," + Math.min(e).toFixed(2) + ")")
-}
-
-/**
- * @Deprecated 
- * Util function for starting the experiment in full screen by default on experiment startup 
- * Press 'esc' to exit out of full screen. 
- * Mayy not be needed...
- */
-function fullScreen(){
-
-  console.log("Initialize full screen mode..");
-
-  // Prep 'cbox' for full screen mode
-  document.getElementById("cbox").style="overflow:hidden;width:800px;height:600px;border:0px solid black;background-color:black;display:flex;justify-content:center;align-items:center"
-
-  psy_fullscreen(document.getElementById("cbox"));
-  // --- NO psy_screen_scale(0,true);
-}
-
-/**
- * @Deprecated - Not needed, i think..
- * Bootstraps the page with a button for toggling full screen 
- *
- *
- */
-function addFullScreenElement(){
-  document.getElementById('showdata').innerHTML="<button onclick='fullScreen()'>fullscreen</button>"
 }
 
 // Contains mapping from experiments --> column names 
@@ -227,6 +151,54 @@ function getExperimentToColumnNamesMap(experimentName){
 
   return experimentToColumnNamesMapping[experimentName]
 }
+
+/**
+  * Get total trials for the experiment 
+**/
+function getTotalTrials(experimentName){
+  if(experimentName == "TaskSwitching" || experimentName == "PosnerCue"){
+    console.log(`Total Trials: ${TOTAL_TRIALS_VAR}`)
+    return TOTAL_TRIALS_VAR
+  } else if(experimentName == "SimpleReactionTrain"){
+    return SimpleReactionTrain
+  } else if(experimentName == "SimpleReactionTest"){
+    return SimpleReactionTest
+  }
+}
+
+/**
+  * Parse relevant HTTP args 
+  *
+**/
+function parseHttpArgs(experimentName){
+    var selfReferenceURL = new URL(window.location.href);
+
+    var trials = selfReferenceURL.searchParams.get("totalTrials")
+    if(trials != null) {
+      TOTAL_TRIALS_VAR = parseInt(trials)
+    } 
+
+    var simpleReactionTrain = selfReferenceURL.searchParams.get("simpleReactionTrain")
+    if(simpleReactionTrain != null){
+       SimpleReactionTrain = parseInt(simpleReactionTrain)
+       console.log(SimpleReactionTrain)
+    }
+
+    var simpleReactionTest = selfReferenceURL.searchParams.get("simpleReactionTest")
+    if(simpleReactionTest != null){
+      SimpleReactionTest = parseInt(simpleReactionTest)
+      console.log(SimpleReactionTest)
+    }
+}
+
+/**
+  * Initialize relevant global vars 
+*/ 
+function initGlobalVariableStash(experimentName){
+    console.log("Global variables stash init")
+    parseHttpArgs(experimentName)
+}
+
 
 /**
   * Convert poorly formatted output data to a hash table
@@ -450,20 +422,21 @@ function noOpSkipFunction(data, originalDataCollection, dataCategory){}
 /**
   * Simple mapping for 'custom' statistics calculations.  
   *
-  *
+  * @Deprecated
 */ 
-function customStatsLogic(experimentName) {
-      var customLogicMapper = {
-        "GoNoGo" : {},
-        "PosnerCue" : {},
-        "TaskSwitching" : {},
-        "SimpleReaction" : {}
-      }
+// function customStatsLogic(experimentName) {
+//       var customLogicMapper = {
+//         "GoNoGo" : {},
+//         "PosnerCue" : {},
+//         "TaskSwitching" : {},
+//         "SimpleReaction" : {}
+//       }
 
-      customLogicMapper["GoNoGo"]["ErrorStatus"] = (data, originalDataCollection, dataCategory) => goNoGoPercent(data, originalDataCollection, dataCategory)
+//       customLogicMapper["GoNoGo"]["ErrorStatus"] = (data, originalDataCollection, dataCategory) => goNoGoPercent(data, originalDataCollection, dataCategory)
 
-      return customLogicMapper[experimentName]
-}
+//       return customLogicMapper[experimentName]
+// }
+
 
 /**
   * Generates a secondary CSV with specified experiment stats.
@@ -474,78 +447,84 @@ function calculateAutomatedStats(experimentName, data){
 
   if(experimentName == "TaskSwitching"){
     return calculateSwitchCost(data)
-  } else{
-      var columnNameMapping = getExperimentToColumnNamesMap(experimentName)
+  } else if(experimentName == "GoNoGo"){
+    return calculateGoNoGo(data)
+  } 
 
-      var dataFormatted = data.split("\n")
+  // @Deprecated 
+  // else{
 
-      var customStatisLogic = customStatsLogic(experimentName)
+  //     var columnNameMapping = getExperimentToColumnNamesMap(experimentName)
 
-      console.log(customStatsLogic)
+  //     var dataFormatted = data.split("\n")
 
-      // Stores the resultant data in a nice hash table :)
-      var dataToUse = {}
+  //     var customStatisLogic = customStatsLogic(experimentName)
 
-      for(var i = 0; i < dataFormatted.length; i++){
-        // Grab the row
-        var splitUpRow = dataFormatted[i].replace(/\s{2,}/g, ' ').split(" ")
+  //     console.log(customStatsLogic)
 
-        // Get the 'category' of data
-        var dataCategory = splitUpRow[0].replaceAll("\"", "")
-        if(dataCategory === ""){
-          console.log("Empty string/garbage data, skipping..");
-        } else {
-          for(var j = 1; j < columnNameMapping.length; j++){
-            var dataKey = `${dataCategory}_${columnNameMapping[j]}`
-            var dataToAddCastToInt = parseInt(splitUpRow[j])
+  //     // Stores the resultant data in a nice hash table :)
+  //     var dataToUse = {}
 
-            if(columnNameMapping[j] in customStatisLogic == true){
-              console.log(`Custom stats logic handler: ${columnNameMapping[j]} -- ${dataToAddCastToInt}`)
-              dataToUse = customStatisLogic[columnNameMapping[j]](
-                dataToAddCastToInt,
-                dataToUse,
-                dataCategory
-              )
-            } else {
+  //     for(var i = 0; i < dataFormatted.length; i++){
+  //       // Grab the row
+  //       var splitUpRow = dataFormatted[i].replace(/\s{2,}/g, ' ').split(" ")
 
-              if(dataKey in dataToUse == false) {
-                console.log("Add entry to dataToUse table..")
-                dataToUse[dataKey] = {
-                  "mean" : 0,
-                  "peakVal": null,
-                  "minVal" : null,
-                  "totalEntries" : 0
-                }
-              }
+  //       // Get the 'category' of data
+  //       var dataCategory = splitUpRow[0].replaceAll("\"", "")
+  //       if(dataCategory === ""){
+  //         console.log("Empty string/garbage data, skipping..");
+  //       } else {
+  //         for(var j = 1; j < columnNameMapping.length; j++){
+  //           var dataKey = `${dataCategory}_${columnNameMapping[j]}`
+  //           var dataToAddCastToInt = parseInt(splitUpRow[j])
 
-              // Actual mean is calculated later. This is just to store the total.
-              dataToUse[dataKey]["mean"] += dataToAddCastToInt
-              dataToUse[dataKey]["totalEntries"] += 1
+  //           if(columnNameMapping[j] in customStatisLogic == true){
+  //             console.log(`Custom stats logic handler: ${columnNameMapping[j]} -- ${dataToAddCastToInt}`)
+  //             dataToUse = customStatisLogic[columnNameMapping[j]](
+  //               dataToAddCastToInt,
+  //               dataToUse,
+  //               dataCategory
+  //             )
+  //           } else {
 
-              if(dataToUse[dataKey]["peakVal"] == null ||
-                dataToUse[dataKey]["peakVal"] < dataToAddCastToInt){
-                dataToUse[dataKey]["peakVal"] = dataToAddCastToInt
-              }
+  //             if(dataKey in dataToUse == false) {
+  //               console.log("Add entry to dataToUse table..")
+  //               dataToUse[dataKey] = {
+  //                 "mean" : 0,
+  //                 "peakVal": null,
+  //                 "minVal" : null,
+  //                 "totalEntries" : 0
+  //               }
+  //             }
 
-              if(dataToUse[dataKey]["minVal"] == null ||
-                dataToUse[dataKey]["minVal"] > dataToAddCastToInt){
-                dataToUse[dataKey]["minVal"] = dataToAddCastToInt
-              }
-            }
+  //             // Actual mean is calculated later. This is just to store the total.
+  //             dataToUse[dataKey]["mean"] += dataToAddCastToInt
+  //             dataToUse[dataKey]["totalEntries"] += 1
 
-          }
-        }
-      }
+  //             if(dataToUse[dataKey]["peakVal"] == null ||
+  //               dataToUse[dataKey]["peakVal"] < dataToAddCastToInt){
+  //               dataToUse[dataKey]["peakVal"] = dataToAddCastToInt
+  //             }
 
-      // Actually calculate the means
-      for (const key of Object.keys(dataToUse)) {
-        if("mean" in dataToUse[key]){
-          // dataToUse[key]["originalMean"] = dataToUse[key]["mean"]
-          dataToUse[key]["mean"] = (dataToUse[key]["mean"] / dataToUse[key]["totalEntries"])
-        }
-      }
-      return dataToUse
-  }
+  //             if(dataToUse[dataKey]["minVal"] == null ||
+  //               dataToUse[dataKey]["minVal"] > dataToAddCastToInt){
+  //               dataToUse[dataKey]["minVal"] = dataToAddCastToInt
+  //             }
+  //           }
+
+  //         }
+  //       }
+  //     }
+
+  //     // Actually calculate the means
+  //     for (const key of Object.keys(dataToUse)) {
+  //       if("mean" in dataToUse[key]){
+  //         // dataToUse[key]["originalMean"] = dataToUse[key]["mean"]
+  //         dataToUse[key]["mean"] = (dataToUse[key]["mean"] / dataToUse[key]["totalEntries"])
+  //       }
+  //     }
+  //     return dataToUse
+  // }
 }
 
 /**
@@ -603,6 +582,9 @@ function addCollumnsToOutputData(experimentName, data) {
 
 }
 
+/**
+  * Adds version to title of site 
+**/
 function addVersion(version) {
   document.getElementsByTagName("title")[0].innerText = `v${version}; CSUMB SSB Study`
 }
@@ -657,8 +639,6 @@ function initCustomDataLoader(experimentName){
             createAutomatedStatsCSV(automatedStats, EXPERIMENT_NAME);
         }
     }
-
-    // @Deprecated -- not needed? addFullScreenElement();
 }
 
 /**
@@ -671,6 +651,9 @@ function loadZehPlugin(experimentName) {
 
   // Adds  the version 
   addVersion(VERSION);
+
+  // Initialize any required globals
+  initGlobalVariableStash(experimentName)
 
   // Laod the custom welcome image 
   loadWelcomeImageBitMap();
