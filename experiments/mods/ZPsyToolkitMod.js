@@ -219,6 +219,9 @@ function parseHttpArgs(experimentName){
 */ 
 function initGlobalVariableStash(experimentName){
     console.log("Global variables stash init")
+    if(experimentName == "PosnerCue"){
+      TOTAL_TRIALS_VAR = 13 // 13 for posner 
+    }
     parseHttpArgs(experimentName)
 }
 
@@ -485,8 +488,73 @@ function calculateGoNoGo(data) {
   return finalData
 }
 
+function countTowardCues(CueValidityAsNumber, StatusOfAnswer){
+  console.log(CueValidityAsNumber)
+  console.log(StatusOfAnswer)
+
+  return parseInt(CueValidityAsNumber) == 1 && parseInt(StatusOfAnswer) == 1
+}
+
+function countTowardInvalidCues(CueValidityAsNumber, StatusOfAnswer){
+  return parseInt(CueValidityAsNumber) == 0 && parseInt(StatusOfAnswer) == 1
+}
+
+function countTowardIncorrectOnInvalidCues(CueValidityAsNumber, StatusOfAnswer){
+  return parseInt(CueValidityAsNumber) == 0 && parseInt(StatusOfAnswer) != 1  
+}
+
 function calculatePosnerCueStats(data){
-  var dataSerialized = serializeOutputDataToTable(data)
+  var dataSerialized = serializeOutputDataToTable(data, "PosnerCue")
+  // Cue block training and testing means (response time for CueValidityAsNumber=1 && StatusOfAnswer=1)
+  var totalCues = 0
+  var sumCueResponseTimes = 0
+
+  var totalInvalidCues = 0 
+  var sumInvalidCueResponseTimes = 0 
+
+  var totalIncorrectOnInvalidCues = 0 
+  console.log(dataSerialized)
+  for(var i = 0; i < dataSerialized["ResponsetimeMS"].length; i++){
+    console.log(dataSerialized['CueValidityAsNumber'][i])
+    console.log(dataSerialized['StatusOfAnswer'][i])
+
+    var responseTimeParsed = parseFloat(dataSerialized["ResponsetimeMS"][i])
+    console.log(responseTimeParsed)
+    if(countTowardCues(dataSerialized['CueValidityAsNumber'][i],dataSerialized['StatusOfAnswer'][i])){
+        console.log("cue count")
+        totalCues+=1
+        sumCueResponseTimes+=responseTimeParsed
+    } else if(countTowardInvalidCues(dataSerialized['CueValidityAsNumber'][i],dataSerialized['StatusOfAnswer'][i])){
+        console.log("Count invalid cue")
+        totalInvalidCues+=1
+        sumInvalidCueResponseTimes+=responseTimeParsed
+    } else if(countTowardIncorrectOnInvalidCues(dataSerialized['CueValidityAsNumber'][i],dataSerialized['StatusOfAnswer'][i])){
+        totalIncorrectOnInvalidCues+=1
+    } else {
+      console.log("skip")
+    }
+  }
+
+  console.log(sumCueResponseTimes)
+  console.log(sumInvalidCueResponseTimes)
+
+  var finalData = {
+    "avgValidCueResponseTime": (sumCueResponseTimes / totalCues),
+    "avgInvalidCueResponseTime": (sumInvalidCueResponseTimes / totalInvalidCues),
+    "percentageMissedInvalidCues": (totalIncorrectOnInvalidCues / totalInvalidCues)
+  }
+
+
+  var csv = "avgValidCueResponseTime, avgInvalidCueResponseTime, percentageMissedInvalidCues\n"
+  csv    += `${finalData["avgValidCueResponseTime"]},${finalData["avgInvalidCueResponseTime"]},${finalData["percentageMissedInvalidCues"]}` 
+
+  downloadBlob(
+      csv,
+      generateOutputFileName("PosnerStats"),
+      'text/csv;charset=utf-8;'
+  )
+
+  return finalData
 }
 
 /** @Deprecated

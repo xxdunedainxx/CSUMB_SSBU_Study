@@ -493,19 +493,19 @@ function calculateGoNoGo(data) {
   return finalData
 }
 
-function countTowardCues(data, index){
-	console.log(data['CueValidityAsNumber'][i])
-		console.log(data['StatusOfAnswer'][i])
+function countTowardCues(CueValidityAsNumber, StatusOfAnswer){
+	console.log(CueValidityAsNumber)
+	console.log(StatusOfAnswer)
 
-	return parseInt(data['CueValidityAsNumber'][i]) == 1 && parseInt(data['StatusOfAnswer'][i]) == 1
+	return parseInt(CueValidityAsNumber) == 1 && parseInt(StatusOfAnswer) == 1
 }
 
-function countTowardInvalidCues(data, index){
-	return parseInt(data['CueValidityAsNumber'][i]) == 0 && parseInt(data['StatusOfAnswer'][i]) == 1
+function countTowardInvalidCues(CueValidityAsNumber, StatusOfAnswer){
+	return parseInt(CueValidityAsNumber) == 0 && parseInt(StatusOfAnswer) == 1
 }
 
-function countTowardIncorrectOnInvalidCues(data, index){
-	return parseInt(data['CueValidityAsNumber'][i]) == 0 && parseInt(data['StatusOfAnswer'][i]) != 1	
+function countTowardIncorrectOnInvalidCues(CueValidityAsNumber, StatusOfAnswer){
+	return parseInt(CueValidityAsNumber) == 0 && parseInt(StatusOfAnswer) != 1	
 }
 
 function calculatePosnerCueStats(data){
@@ -520,18 +520,20 @@ function calculatePosnerCueStats(data){
   var totalIncorrectOnInvalidCues = 0 
   console.log(dataSerialized)
   for(var i = 0; i < dataSerialized["ResponsetimeMS"].length; i++){
+		console.log(dataSerialized['CueValidityAsNumber'][i])
+		console.log(dataSerialized['StatusOfAnswer'][i])
 
   	var responseTimeParsed = parseFloat(dataSerialized["ResponsetimeMS"][i])
   	console.log(responseTimeParsed)
-  	if(countTowardCues(dataSerialized,i)){
+  	if(countTowardCues(dataSerialized['CueValidityAsNumber'][i],dataSerialized['StatusOfAnswer'][i])){
   			console.log("cue count")
   			totalCues+=1
   			sumCueResponseTimes+=responseTimeParsed
-  	} else if(countTowardInvalidCues(dataSerialized,i)){
+  	} else if(countTowardInvalidCues(dataSerialized['CueValidityAsNumber'][i],dataSerialized['StatusOfAnswer'][i])){
   			console.log("Count invalid cue")
   			totalInvalidCues+=1
   			sumInvalidCueResponseTimes+=responseTimeParsed
-  	} else if(countTowardIncorrectOnInvalidCues(dataSerialized,i)){
+  	} else if(countTowardIncorrectOnInvalidCues(dataSerialized['CueValidityAsNumber'][i],dataSerialized['StatusOfAnswer'][i])){
   			totalIncorrectOnInvalidCues+=1
   	} else {
   		console.log("skip")
