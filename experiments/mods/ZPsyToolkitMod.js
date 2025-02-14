@@ -20,7 +20,7 @@
 */ 
 
 // Semantic versioning for the app 
-VERSION="1.0.5"
+VERSION="1.0.6"
 
 // Store global vars 
 var GLOBAL_VARIABLE_STASH = {}
@@ -32,7 +32,7 @@ var SimpleReactionTest = 20
 // go/no-go vars
 var GoTrials = 20
 var NoGoTrials = 5 
-
+var isDemoSite = false 
 
 /*
  * Simple utility function for downloading a document of a particular content type.
@@ -210,6 +210,11 @@ function parseHttpArgs(experimentName){
   var noGoTrials = selfReferenceURL.searchParams.get("NoGoTrials")
   if(noGoTrials != null){
     NoGoTrials = noGoTrials
+  }
+
+  var isDemo = selfReferenceURL.searchParams.get("isDemoSite")
+  if(isDemo != null){
+    isDemoSite = true 
   }
 
 }
@@ -766,6 +771,13 @@ function addVersion(version) {
   document.getElementsByTagName("title")[0].innerText = `v${version}; CSUMB SSB Study`
 }
 
+
+/**
+  * Simple helper method to determine if this is a demo site or not 
+**/
+function isDemo(){
+  return isDemoSite
+}
 /**
   * Injects a custom welcome image :)
   *
@@ -785,6 +797,28 @@ function loadWelcomeImageBitMap(){
 
 }
 
+function reactionTimeDemoReport(data, experimentName){
+  var dataSerialized = serializeOutputDataToTable(data, experimentName)
+  console.log(dataSerialized)
+  var totalTrials = dataSerialized["ResponseTime"].length
+  var totalTime = 0
+  for(var i = 0; i < dataSerialized["ResponseTime"].length; i++){
+    totalTime += parseFloat(dataSerialized["ResponseTime"][i])
+  }
+
+  var meanResponseTime = totalTime / totalTrials
+
+  var endUserMessage = `Thank you! You had an average response time of ${meanResponseTime.toString()} milliseconds`
+  alert(endUserMessage)
+}
+
+function demoReportingRoutine(experimentName){
+  console.log("Demo reporting routine")
+  if(experimentName == "SimpleReaction"){
+    reactionTimeDemoReport(outputdata, experimentName)
+  }
+}
+
 /**
   * Entry point for the custom data retrieval function. 
   * Basically it bootstraps on top of the existing 'showdata_html' event, 
@@ -799,23 +833,24 @@ function initCustomDataLoader(experimentName){
 
     // Bootstrap listener on top of the 'showdata_html' psytoolkit javascript method. 
     showdata_html = function() {
-        originalShowDataHtml();
+        if(!isDemo()){
+          originalShowDataHtml();
 
-        // Take output data and create the CSV for download 
-        outputDataToCSV(
-          addCollumnsToOutputData(EXPERIMENT_NAME, outputdata), 
-          EXPERIMENT_NAME
-        );
+          // Take output data and create the CSV for download 
+          outputDataToCSV(
+            addCollumnsToOutputData(EXPERIMENT_NAME, outputdata), 
+            EXPERIMENT_NAME
+          );
 
-        // Stash the stats. Pass on to another function for creating the CSVs 
-        var automatedStats = calculateAutomatedStats(
-          EXPERIMENT_NAME,
-          outputdata
-        );
-        // @Deprecated 
-        // if(EXPERIMENT_NAME != "TaskSwitching"){
-        //     createAutomatedStatsCSV(automatedStats, EXPERIMENT_NAME);
-        // }
+          // Stash the stats. Pass on to another function for creating the CSVs 
+          var automatedStats = calculateAutomatedStats(
+            EXPERIMENT_NAME,
+            outputdata
+          );
+        } else {
+          // DEMO CODE BLOCK 
+          demoReportingRoutine(experimentName)
+        }
     }
 }
 
