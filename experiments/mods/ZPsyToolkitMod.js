@@ -17,7 +17,12 @@
   * Update: February 8th, 2025 - Make trials configurable (ex demo site). 
     - Go/No-go automated status enhancement. Deprecate old automated stats method 
   * Update: February 8th, 2025 - Posner Stats 
+  * Update: February 13th, 2025 - Add 'isDemoSite' flag, and ability to output demo data via 'alert' -- applies to SimpleReactionTime only right now 
+  * Update: February 14th, 2025 - Add QR code for main github site info after 'demo'
 */ 
+
+// Semantic versioning for the app 
+VERSION="1.0.7"
 
 // Semantic versioning for the app 
 VERSION="1.0.6"
@@ -816,6 +821,12 @@ function demoReportingRoutine(experimentName){
   console.log("Demo reporting routine")
   if(experimentName == "SimpleReaction"){
     reactionTimeDemoReport(outputdata, experimentName)
+
+    // Hide the experiment window 
+    document.getElementsByTagName("center")[0].style.display = "none"
+
+    // Show the informational section
+    document.getElementById("demoQR").style.display=""
   }
 }
 

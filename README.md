@@ -13,6 +13,13 @@ See links below for demos of our experiments:
 * [Posner Queues](https://xxdunedainxx.github.io/CSUMB_SSBU_Study/site/Posner.html)
 * [Go No go](https://xxdunedainxx.github.io/CSUMB_SSBU_Study/site/GoNoGo.html)
 
+## Contact
+
+Want more info or want to participate? Shoot us an email! 
+
+* zrmmaster92@gmail.com
+* smachek@csumb.edu
+
 ## General Info 
 
 Experiment code for a 'Super Smash Bros Ultimate', cognitive research study, where we are attempting to observe various cognitive capabilities in relationship to players of super smash brothers. This experiment is being conducted at [CSU Monterey Bay](https://csumb.edu/).
