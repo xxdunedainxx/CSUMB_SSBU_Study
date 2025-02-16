@@ -20,7 +20,8 @@
   * Update: February 13th, 2025 - Add 'isDemoSite' flag, and ability to output demo data via 'alert' -- applies to SimpleReactionTime only right now 
   * Update: February 14th, 2025 - Add QR code for main github site info after 'demo'
   * Update: February 15th, 2025 - Remove @Deprecated methods 
-  * Update: February 15th 2025 - Simple reaction time basic automated stats 
+  * Update: February 15th, 2025 - Simple reaction time basic automated stats 
+  * Update: February 15th, 2025 - Posner cue automated stats 
 */ 
 
 // Semantic versioning for the app 
@@ -540,6 +541,13 @@ function isValidCueAndGoodStatus(StatusOfAnswer, CueValidityAsNumber){
   return StatusOfAnswer == 1 && CueValidityAsNumber == 1
 }
 
+/*
+  helper to determine min (peak value for response times typically)
+*/
+function isMinValue(previousMin, currentVal){
+  return previousMin == null || (previousMin > currentVal)
+}
+
 /**
   Automated stats for the posner cue task 
 
@@ -552,9 +560,6 @@ function isValidCueAndGoodStatus(StatusOfAnswer, CueValidityAsNumber){
 function calculatePosnerCueStats(data){
 
   var dataSerialized = serializeOutputDataToTable(data, "PosnerCue")
-
-  var peakValueValidCues=null
-  var peakValueInvalidCues=null
 
   // TRAIN Status = 1, cue valid = 1, 
   var totalNumberTrainingCorrectResponseAndValidCue = 0
@@ -581,6 +586,13 @@ function calculatePosnerCueStats(data){
   var totalInvalidCuesTesting = 0 
   var totalInvalidCuesTraining = 0 
 
+  // Peak response time for train v test status=1, valid = 1/0
+  var peakTrainingValueValidCues=null
+  var peakTestingValueValidCues=null
+
+  var peakTrainingValueInvalidCues=null
+  var peakTestingValueInvalidCues=null
+
 
   console.log(dataSerialized)
 
@@ -592,6 +604,16 @@ function calculatePosnerCueStats(data){
 
         if(isUncued(dataSerialized["CuedOrUncued"][i]) && isBadStatus(dataSerialized["StatusOfAnswer"][i])){
           incorrectResponseForUncuedTraining+=1
+        }
+
+        // Check if its the peak for training/invalid
+        if(isMinValue(peakTrainingValueInvalidCues,parseInt(dataSerialized["ResponsetimeMS"][i]))){
+          peakTrainingValueInvalidCues = parseInt(dataSerialized["ResponsetimeMS"][i])
+        }
+      } else {
+        // check peak for training/valid
+        if(isMinValue(peakTrainingValueValidCues,parseInt(dataSerialized["ResponsetimeMS"][i]))){
+          peakTrainingValueValidCues = parseInt(dataSerialized["ResponsetimeMS"][i])
         }
       }
 
@@ -616,7 +638,17 @@ function calculatePosnerCueStats(data){
           if(isUncued(dataSerialized["CuedOrUncued"][i]) && isBadStatus(dataSerialized["StatusOfAnswer"][i])){
             incorrectResponseForUncuedTesting+=1
           }
+
+          if(isMinValue(peakTestingValueInvalidCues,parseInt(dataSerialized["ResponsetimeMS"][i]))){
+            peakTestingValueInvalidCues = parseInt(dataSerialized["ResponsetimeMS"][i])
+          }
+      } else {
+        // check peak for testing/valid
+        if(isMinValue(peakTestingValueValidCues,parseInt(dataSerialized["ResponsetimeMS"][i]))){
+          peakTestingValueValidCues = parseInt(dataSerialized["ResponsetimeMS"][i])
+        }
       }
+
       if(isValidCueAndGoodStatus(parseInt(dataSerialized["StatusOfAnswer"][i]), parseInt(dataSerialized["CueValidityAsNumber"][i]))){
         // Testing
         totalNumberTestingCorrectResponseAndValidCue+=1
@@ -642,12 +674,16 @@ function calculatePosnerCueStats(data){
     "totalInvalidCuesTesting": totalInvalidCuesTesting,
     "totalInvalidCuesTraining":totalInvalidCuesTraining,
     "percentageMissedInvalidCuesTraining": (incorrectResponseForUncuedTraining / totalInvalidCuesTraining),
-    "percentageMissedInvalidCuesTesting": (incorrectResponseForUncuedTesting/ totalInvalidCuesTesting)
+    "percentageMissedInvalidCuesTesting": (incorrectResponseForUncuedTesting/ totalInvalidCuesTesting),
+    "peakTestingValueValidCues": peakTestingValueValidCues,
+    "peakTestingValueInvalidCues": peakTestingValueInvalidCues,
+    "peakTrainingValueInvalidCues": peakTrainingValueInvalidCues,
+    "peakTrainingValueValidCues": peakTrainingValueValidCues
   }
 
 
-  var csv = "avgValidCueResponseTimeTraining,avgValidCueResponseTimeTesting,avgInvalidCueResponseTimeTraining,avgInvalidCueResponseTimeTesting,totalInvalidCuesTesting,totalInvalidCuesTraining,percentageMissedInvalidCuesTraining,percentageMissedInvalidCuesTesting\n"
-  csv    += `${finalData["avgValidCueResponseTimeTraining"]},${finalData["avgValidCueResponseTimeTesting"]},${finalData["avgInvalidCueResponseTimeTraining"]},${finalData["avgInvalidCueResponseTimeTesting"]},${finalData["totalInvalidCuesTesting"]},${finalData["totalInvalidCuesTraining"]},${finalData["percentageMissedInvalidCuesTraining"]},${finalData["percentageMissedInvalidCuesTesting"]}` 
+  var csv = "avgValidCueResponseTimeTraining,avgValidCueResponseTimeTesting,avgInvalidCueResponseTimeTraining,avgInvalidCueResponseTimeTesting,totalInvalidCuesTesting,totalInvalidCuesTraining,percentageMissedInvalidCuesTraining,percentageMissedInvalidCuesTesting,peakTestingValueValidCues,peakTestingValueInvalidCues,peakTrainingValueInvalidCues,peakTrainingValueValidCues\n"
+  csv    += `${finalData["avgValidCueResponseTimeTraining"]},${finalData["avgValidCueResponseTimeTesting"]},${finalData["avgInvalidCueResponseTimeTraining"]},${finalData["avgInvalidCueResponseTimeTesting"]},${finalData["totalInvalidCuesTesting"]},${finalData["totalInvalidCuesTraining"]},${finalData["percentageMissedInvalidCuesTraining"]},${finalData["percentageMissedInvalidCuesTesting"]},${finalData["peakTestingValueValidCues"]},${finalData["peakTestingValueInvalidCues"]},${finalData["peakTrainingValueInvalidCues"]},${finalData["peakTrainingValueValidCues"]}` 
 
   downloadBlob(
       csv,
