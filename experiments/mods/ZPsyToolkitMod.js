@@ -24,7 +24,7 @@
 */ 
 
 // Semantic versioning for the app 
-VERSION="1.0.8"
+VERSION="1.0.9"
 
 // Store global vars 
 var GLOBAL_VARIABLE_STASH = {}
@@ -512,54 +512,146 @@ function countTowardIncorrectOnInvalidCues(CueValidityAsNumber, StatusOfAnswer){
   return parseInt(CueValidityAsNumber) == 0 && parseInt(StatusOfAnswer) != 1  
 }
 
+/**
+  Simple check if its invalid 
+*/
+function isInvalidCue(CueValidity){
+  return CueValidity == "invalid"
+}
+
+/*
+  Checks if status != 1 
+*/
+function isBadStatus(StatusOfAnswer) {
+  return parseInt(StatusOfAnswer) != 1
+}
+
+/*
+  Simple method to check if its an uncued trial 
+*/
+function isUncued(CuedOrUncued){
+  return CuedOrUncued == "uncued"
+}
+
+/*
+  Checks is status == 1 && if cue validity = 1
+*/
+function isValidCueAndGoodStatus(StatusOfAnswer, CueValidityAsNumber){
+  return StatusOfAnswer == 1 && CueValidityAsNumber == 1
+}
+
+/**
+  Automated stats for the posner cue task 
+
+  * Average response for train/test: when statusofanswer == 1 & cue validity = 1, and status=1 valid = 0
+    - peak values (min) for both 1-1 & 0-1
+    - incorrect responses for 1-1
+    - incorrect response % = status=2/3 for uncued, response = invalid 
+    - count # of invalid 
+*/
 function calculatePosnerCueStats(data){
+
   var dataSerialized = serializeOutputDataToTable(data, "PosnerCue")
-  // Cue block training and testing means (response time for CueValidityAsNumber=1 && StatusOfAnswer=1)
-  var totalCues = 0
-  var sumCueResponseTimes = 0
 
-  var totalInvalidCues = 0 
-  var sumInvalidCueResponseTimes = 0 
+  var peakValueValidCues=null
+  var peakValueInvalidCues=null
 
-  var totalIncorrectOnInvalidCues = 0 
+  // TRAIN Status = 1, cue valid = 1, 
+  var totalNumberTrainingCorrectResponseAndValidCue = 0
+  var totalResponeTimesTrainingCorrectResponseAndValidCue = 0
+
+  // TRAIN Status = 1,  valid = 0
+  var totalNumberTrainingCorrectResponseAndInvalidCue = 0
+  var totalResponeTimesTrainingCorrectResponseAndInvalidCue = 0
+
+  // TEST Status = 1, cue valid = 1, 
+  var totalNumberTestingCorrectResponseAndValidCue = 0
+  var totalResponeTimesTestingCorrectResponseAndValidCue = 0
+
+  // TEST Status = 1,  valid = 0
+  var totalNumberTestingCorrectResponseAndInvalidCue = 0
+  var totalResponeTimesTestingCorrectResponseAndInvalidCue = 0
+
+  // # Of stats=2/3 for uncued, response = invalid 
+  // used to calculate percentage later 
+  var incorrectResponseForUncuedTraining = 0
+  var incorrectResponseForUncuedTesting = 0
+
+  // Simple sum 
+  var totalInvalidCuesTesting = 0 
+  var totalInvalidCuesTraining = 0 
+
+
   console.log(dataSerialized)
-  for(var i = 0; i < dataSerialized["ResponsetimeMS"].length; i++){
-    console.log(dataSerialized['CueValidityAsNumber'][i])
-    console.log(dataSerialized['StatusOfAnswer'][i])
 
-    var responseTimeParsed = parseFloat(dataSerialized["ResponsetimeMS"][i])
-    console.log(responseTimeParsed)
-    if(countTowardCues(dataSerialized['CueValidityAsNumber'][i],dataSerialized['StatusOfAnswer'][i])){
-        console.log("cue count")
-        totalCues+=1
-        sumCueResponseTimes+=responseTimeParsed
-    } else if(countTowardInvalidCues(dataSerialized['CueValidityAsNumber'][i],dataSerialized['StatusOfAnswer'][i])){
-        console.log("Count invalid cue")
-        totalInvalidCues+=1
-        sumInvalidCueResponseTimes+=responseTimeParsed
-    } else if(countTowardIncorrectOnInvalidCues(dataSerialized['CueValidityAsNumber'][i],dataSerialized['StatusOfAnswer'][i])){
-        totalIncorrectOnInvalidCues+=1
+  for(var i = 0; i < dataSerialized["ResponsetimeMS"].length; i++){
+    // Training set processing 
+    if(dataSerialized["TestOrTraining"][i] == "cueingBlockTraining"){
+      if(isInvalidCue(dataSerialized["CueValidity"][i])){
+        totalInvalidCuesTraining +=1 
+
+        if(isUncued(dataSerialized["CuedOrUncued"][i]) && isBadStatus(dataSerialized["StatusOfAnswer"][i])){
+          incorrectResponseForUncuedTraining+=1
+        }
+      }
+
+      if(isValidCueAndGoodStatus(parseInt(dataSerialized["StatusOfAnswer"][i]), 
+          parseInt(dataSerialized["CueValidityAsNumber"][i]))){
+        // TRAINING
+        totalNumberTrainingCorrectResponseAndValidCue+=1
+        totalResponeTimesTrainingCorrectResponseAndValidCue+=parseInt(
+          dataSerialized["ResponsetimeMS"][i]
+        )
+      } else {
+        totalNumberTrainingCorrectResponseAndInvalidCue+=1
+        totalResponeTimesTrainingCorrectResponseAndInvalidCue+=parseInt(
+          dataSerialized["ResponsetimeMS"][i]
+        )
+      }
+
     } else {
-      console.log("skip")
+      // Testing set processing 
+      if(isInvalidCue(dataSerialized["CueValidity"][i])){
+          totalInvalidCuesTesting +=1 
+          if(isUncued(dataSerialized["CuedOrUncued"][i]) && isBadStatus(dataSerialized["StatusOfAnswer"][i])){
+            incorrectResponseForUncuedTesting+=1
+          }
+      }
+      if(isValidCueAndGoodStatus(parseInt(dataSerialized["StatusOfAnswer"][i]), parseInt(dataSerialized["CueValidityAsNumber"][i]))){
+        // Testing
+        totalNumberTestingCorrectResponseAndValidCue+=1
+        totalResponeTimesTestingCorrectResponseAndValidCue+=parseInt(
+          dataSerialized["ResponsetimeMS"][i]
+        )
+      } else {
+        totalNumberTestingCorrectResponseAndInvalidCue+=1
+        totalResponeTimesTestingCorrectResponseAndInvalidCue+=parseInt(
+          dataSerialized["ResponsetimeMS"][i]
+        )
+      }
     }
   }
 
-  console.log(sumCueResponseTimes)
-  console.log(sumInvalidCueResponseTimes)
+
 
   var finalData = {
-    "avgValidCueResponseTime": (sumCueResponseTimes / totalCues),
-    "avgInvalidCueResponseTime": (sumInvalidCueResponseTimes / totalInvalidCues),
-    "percentageMissedInvalidCues": (totalIncorrectOnInvalidCues / totalInvalidCues)
+    "avgValidCueResponseTimeTraining": (totalResponeTimesTrainingCorrectResponseAndValidCue / totalNumberTrainingCorrectResponseAndValidCue),
+    "avgValidCueResponseTimeTesting": (totalResponeTimesTestingCorrectResponseAndValidCue / totalNumberTestingCorrectResponseAndValidCue),
+    "avgInvalidCueResponseTimeTraining": (totalResponeTimesTrainingCorrectResponseAndInvalidCue / totalNumberTrainingCorrectResponseAndInvalidCue),
+    "avgInvalidCueResponseTimeTesting": (totalResponeTimesTestingCorrectResponseAndInvalidCue / totalNumberTestingCorrectResponseAndInvalidCue),
+    "totalInvalidCuesTesting": totalInvalidCuesTesting,
+    "totalInvalidCuesTraining":totalInvalidCuesTraining,
+    "percentageMissedInvalidCuesTraining": (incorrectResponseForUncuedTraining / totalInvalidCuesTraining),
+    "percentageMissedInvalidCuesTesting": (incorrectResponseForUncuedTesting/ totalInvalidCuesTesting)
   }
 
 
-  var csv = "avgValidCueResponseTime, avgInvalidCueResponseTime, percentageMissedInvalidCues\n"
-  csv    += `${finalData["avgValidCueResponseTime"]},${finalData["avgInvalidCueResponseTime"]},${finalData["percentageMissedInvalidCues"]}` 
+  var csv = "avgValidCueResponseTimeTraining,avgValidCueResponseTimeTesting,avgInvalidCueResponseTimeTraining,avgInvalidCueResponseTimeTesting,totalInvalidCuesTesting,totalInvalidCuesTraining,percentageMissedInvalidCuesTraining,percentageMissedInvalidCuesTesting\n"
+  csv    += `${finalData["avgValidCueResponseTimeTraining"]},${finalData["avgValidCueResponseTimeTesting"]},${finalData["avgInvalidCueResponseTimeTraining"]},${finalData["avgInvalidCueResponseTimeTesting"]},${finalData["totalInvalidCuesTesting"]},${finalData["totalInvalidCuesTraining"]},${finalData["percentageMissedInvalidCuesTraining"]},${finalData["percentageMissedInvalidCuesTesting"]}` 
 
   downloadBlob(
       csv,
-      generateOutputFileName("PosnerStats"),
+      generateOutputFileName("PosnerCueStats"),
       'text/csv;charset=utf-8;'
   )
 
