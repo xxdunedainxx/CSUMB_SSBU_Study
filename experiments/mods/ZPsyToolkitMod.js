@@ -24,9 +24,6 @@
 // Semantic versioning for the app 
 VERSION="1.0.7"
 
-// Semantic versioning for the app 
-VERSION="1.0.6"
-
 // Store global vars 
 var GLOBAL_VARIABLE_STASH = {}
 
@@ -567,60 +564,6 @@ function calculatePosnerCueStats(data){
   return finalData
 }
 
-/** @Deprecated
-  * If a user responds to no-go, count towards % of no-goes 
-  * Remember JS is pass by reference for tables, s
-  * so we can pass original data table and modify it!
-*/
-// function goNoGoPercent(data, originalDataCollection, dataCategory) {
-//   console.log(`${dataCategory} -- Go no go custom stat!! -- ${data} -- ${JSON.stringify(originalDataCollection)}`)
-  
-//   // For no-gos, we want to track % of go vs no goes 
-//   if(dataCategory.substr(0,4) == 'nogo'){
-//     console.log("This is a no go trial")
-//     var keyToUse = `CUSTOM_${dataCategory}_NoGoPercentCalculator`
-
-//     if(keyToUse in originalDataCollection == false){
-//       originalDataCollection[keyToUse] = {
-//         "totalTrials" : 0,
-//         "totalMisses" : 0,
-//         "percentMisses":0
-//       }
-//     }
-
-//     originalDataCollection[keyToUse]["totalTrials"] += 1
-//     if(data == 1){
-//       originalDataCollection[keyToUse]["totalMisses"] += 1
-//     }
-
-//     originalDataCollection[keyToUse]["percentMisses"] = originalDataCollection[keyToUse]["totalMisses"] / originalDataCollection[keyToUse]["totalTrials"] 
-//   }
-//   console.log(originalDataCollection)
-//   return originalDataCollection
-// }
-
-// @Deprecated
-// Custom stats thats effectively a 'null' function. Does nothing 
-// Intended for stats we want to skip. Not sure if we'll need or not. 
-// function noOpSkipFunction(data, originalDataCollection, dataCategory){}
-
-/**
-  * Simple mapping for 'custom' statistics calculations.  
-  *
-  * @Deprecated
-*/ 
-// function customStatsLogic(experimentName) {
-//       var customLogicMapper = {
-//         "GoNoGo" : {},
-//         "PosnerCue" : {},
-//         "TaskSwitching" : {},
-//         "SimpleReaction" : {}
-//       }
-
-//       customLogicMapper["GoNoGo"]["ErrorStatus"] = (data, originalDataCollection, dataCategory) => goNoGoPercent(data, originalDataCollection, dataCategory)
-
-//       return customLogicMapper[experimentName]
-// }
 
 
 /**
@@ -637,124 +580,7 @@ function calculateAutomatedStats(experimentName, data){
   } else if(experimentName == "PosnerCue"){
     return calculatePosnerCueStats(data)
   }
-
-  // @Deprecated 
-  // else{
-
-  //     var columnNameMapping = getExperimentToColumnNamesMap(experimentName)
-
-  //     var dataFormatted = data.split("\n")
-
-  //     var customStatisLogic = customStatsLogic(experimentName)
-
-  //     console.log(customStatsLogic)
-
-  //     // Stores the resultant data in a nice hash table :)
-  //     var dataToUse = {}
-
-  //     for(var i = 0; i < dataFormatted.length; i++){
-  //       // Grab the row
-  //       var splitUpRow = dataFormatted[i].replace(/\s{2,}/g, ' ').split(" ")
-
-  //       // Get the 'category' of data
-  //       var dataCategory = splitUpRow[0].replaceAll("\"", "")
-  //       if(dataCategory === ""){
-  //         console.log("Empty string/garbage data, skipping..");
-  //       } else {
-  //         for(var j = 1; j < columnNameMapping.length; j++){
-  //           var dataKey = `${dataCategory}_${columnNameMapping[j]}`
-  //           var dataToAddCastToInt = parseInt(splitUpRow[j])
-
-  //           if(columnNameMapping[j] in customStatisLogic == true){
-  //             console.log(`Custom stats logic handler: ${columnNameMapping[j]} -- ${dataToAddCastToInt}`)
-  //             dataToUse = customStatisLogic[columnNameMapping[j]](
-  //               dataToAddCastToInt,
-  //               dataToUse,
-  //               dataCategory
-  //             )
-  //           } else {
-
-  //             if(dataKey in dataToUse == false) {
-  //               console.log("Add entry to dataToUse table..")
-  //               dataToUse[dataKey] = {
-  //                 "mean" : 0,
-  //                 "peakVal": null,
-  //                 "minVal" : null,
-  //                 "totalEntries" : 0
-  //               }
-  //             }
-
-  //             // Actual mean is calculated later. This is just to store the total.
-  //             dataToUse[dataKey]["mean"] += dataToAddCastToInt
-  //             dataToUse[dataKey]["totalEntries"] += 1
-
-  //             if(dataToUse[dataKey]["peakVal"] == null ||
-  //               dataToUse[dataKey]["peakVal"] < dataToAddCastToInt){
-  //               dataToUse[dataKey]["peakVal"] = dataToAddCastToInt
-  //             }
-
-  //             if(dataToUse[dataKey]["minVal"] == null ||
-  //               dataToUse[dataKey]["minVal"] > dataToAddCastToInt){
-  //               dataToUse[dataKey]["minVal"] = dataToAddCastToInt
-  //             }
-  //           }
-
-  //         }
-  //       }
-  //     }
-
-  //     // Actually calculate the means
-  //     for (const key of Object.keys(dataToUse)) {
-  //       if("mean" in dataToUse[key]){
-  //         // dataToUse[key]["originalMean"] = dataToUse[key]["mean"]
-  //         dataToUse[key]["mean"] = (dataToUse[key]["mean"] / dataToUse[key]["totalEntries"])
-  //       }
-  //     }
-  //     return dataToUse
-  // }
 }
-
-/** @Deprecated 
-  * Take data from 'calculateAutomatedStats' and format into a CSV. 
-  * Afterwards push to client for download
-  *
-*/
-// function createAutomatedStatsCSV(statsData, experimentName) {
-
-
-//   var csv = [
-//     "",
-//     ""
-//   ]
-
-//   var statsCsvName = `${experimentName}_stats`
-
-//   // Bad this is hardcoded but o well.. 
-//   // CSVs[normalStatsKey] = "mean, minVal, peakVal, totalEntries\n"
-
-//   for (const key of Object.keys(statsData)) {
-//     // csv[0] += (Object.keys(statsData[key]).join(",") + "\n")
-//     var keysToAdd = ""
-//     var valsToAdd = ""
-//     for(const dataKey of Object.keys(statsData[key])){
-//       keysToAdd += `${key}_${dataKey},`
-//       valsToAdd += `${statsData[key][dataKey]},`
-//     }
-
-//     csv[0] += keysToAdd
-//     csv[1] += valsToAdd
-//   }
-
-//   console.log(csv)
-  
-//   var finalCsv = (csv[0] + "\n" + csv[1])
-
-//   downloadBlob(
-//     finalCsv, 
-//     generateOutputFileName(statsCsvName), 
-//     'text/csv;charset=utf-8;'
-//   )  
-// }
 
 /*
  * Add collumn identifiers based on experiment name 
