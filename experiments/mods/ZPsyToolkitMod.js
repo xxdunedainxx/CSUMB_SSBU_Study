@@ -19,10 +19,12 @@
   * Update: February 8th, 2025 - Posner Stats 
   * Update: February 13th, 2025 - Add 'isDemoSite' flag, and ability to output demo data via 'alert' -- applies to SimpleReactionTime only right now 
   * Update: February 14th, 2025 - Add QR code for main github site info after 'demo'
+  * Update: February 15th, 2025 - Remove @Deprecated methods 
+  * Update: February 15th 2025 - Simple reaction time basic automated stats 
 */ 
 
 // Semantic versioning for the app 
-VERSION="1.0.7"
+VERSION="1.0.8"
 
 // Store global vars 
 var GLOBAL_VARIABLE_STASH = {}
@@ -192,13 +194,13 @@ function parseHttpArgs(experimentName){
     TOTAL_TRIALS_VAR = parseInt(trials)
   } 
 
-  var simpleReactionTrain = selfReferenceURL.searchParams.get("simpleReactionTrain")
+  var simpleReactionTrain = selfReferenceURL.searchParams.get("SimpleReactionTrain")
   if(simpleReactionTrain != null){
      SimpleReactionTrain = parseInt(simpleReactionTrain)
      console.log(SimpleReactionTrain)
   }
 
-  var simpleReactionTest = selfReferenceURL.searchParams.get("simpleReactionTest")
+  var simpleReactionTest = selfReferenceURL.searchParams.get("SimpleReactionTest")
   if(simpleReactionTest != null){
     SimpleReactionTest = parseInt(simpleReactionTest)
     console.log(SimpleReactionTest)
@@ -564,6 +566,50 @@ function calculatePosnerCueStats(data){
   return finalData
 }
 
+/**
+  * Calculates the average training and testing reaction times and outputs to a CSV 
+*/
+function calculateSimpleReactionTimeStats(data){
+  console.log("Simple reaction automated stats ")
+  var dataSerialized = serializeOutputDataToTable(data, "SimpleReaction")
+
+  // Get average training & testing reaction times 
+  var totalTrainingReactionTimes = 0
+  var totalTestingReactionTimes = 0 
+  var totalAcrossAllTrials = 0 
+
+  for(var i = 0; i < dataSerialized["ResponseTime"].length; i++){
+    if(dataSerialized["TestOrTrial"][i] == "dlsimple_training"){
+      totalTrainingReactionTimes += parseFloat(dataSerialized["ResponseTime"][i])
+    } else {
+      // assume test 
+      totalTestingReactionTimes += parseFloat(dataSerialized["ResponseTime"][i])
+    }
+    totalAcrossAllTrials += parseFloat(dataSerialized["ResponseTime"][i])
+  }
+
+  var finalData = {
+    "avgTrainingReactionTime": (totalTrainingReactionTimes / SimpleReactionTrain),
+    "avgTestingReactionTime": (totalTestingReactionTimes / SimpleReactionTest),
+    "avgReactionTimeAcrossAllTrials": (totalAcrossAllTrials / (SimpleReactionTrain + SimpleReactionTest))
+  }
+
+  console.log(finalData)
+
+
+  var csv = "avgTrainingReactionTime, avgTestingReactionTime, avgReactionTimeAcrossAllTrials\n"
+  csv    += `${finalData["avgTrainingReactionTime"]},${finalData["avgTestingReactionTime"]},${finalData["avgReactionTimeAcrossAllTrials"]}` 
+
+  console.log(csv)
+  
+  downloadBlob(
+      csv,
+      generateOutputFileName("SimpleReactionStats"),
+      'text/csv;charset=utf-8;'
+  )
+
+  return finalData
+}
 
 
 /**
@@ -579,6 +625,8 @@ function calculateAutomatedStats(experimentName, data){
     return calculateGoNoGo(data)
   } else if(experimentName == "PosnerCue"){
     return calculatePosnerCueStats(data)
+  } else if(experimentName == "SimpleReaction"){
+    return calculateSimpleReactionTimeStats(data)
   }
 }
 
