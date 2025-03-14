@@ -3,10 +3,30 @@
 # Imports
 import os
 import csv
+import sys, traceback
 
 
 # Globals
 DATA_SET='/Users/zachmcfadden/Desktop/dev/tmp/smashStudyDataSet'
+
+def errorStackTrace(e):
+    exc_type, exc_obj, exc_tb = sys.exc_info()
+    trace = traceback.format_exc()
+    errorMessage = ("STACK TRACE ERROR :: " + str(e) + ".. Line number: " + str(
+        exc_tb.tb_lineno) + "-- STACK TRACEBACK: " + str(trace))
+    return errorMessage
+
+def printUnusableData():
+    totalUnused = 0
+    totalRecords = 0
+    for category in DataLoader.SUBJECT_DATA_STRUCTURED.keys():
+        for subjectId in DataLoader.SUBJECT_DATA_STRUCTURED[category].keys():
+            sub: SubjectDataStructured = DataLoader.SUBJECT_DATA_STRUCTURED[category][subjectId]
+            if sub.isUsableData == False:
+                print(f"Following Subject datat not used: {sub.id}")
+                totalUnused+=1
+            totalRecords+=1
+    print(f"Total Unused: {totalUnused}/{totalRecords}")
 
 """
     Simple enum for all data categories 
@@ -64,6 +84,15 @@ class SubjectDataStructured:
                 self.isUsableData = False
                 break
 
+    def __checkData(self):
+        if len(self.taskSwitchingDataStructured) == 0 or \
+            len(self.simpleReactionStructured) == 0 or \
+            len(self.goNoGoStructured) == 0 or \
+            len(self.posnerDataStructured) == 0:
+            self.isUsableData = False
+
+    def setNotUsable(self):
+        self.isUsableData = False
 
     def __init__(
         self,
@@ -80,6 +109,7 @@ class SubjectDataStructured:
         self.simpleReactionStructured = []
         self.isUsableData: bool = True
         self.__serializeCSVs()
+        self.__checkData()
 
 """
 Data mining
@@ -159,13 +189,6 @@ class DataLoader:
     Static collection of methods
         for extracting features from the raw CSV data set for the various experiments.
     Creates sets of feature vectors. For each experiment, gather the following for the feature vector set:
-        - Simple Reaction time average (train/test)
-
-        ## Go/no-go metrics
-        - Go/No-go training - reaction time
-        - Go/No-go testing - reaction time
-        - No-go error - training
-        - No-go error - testing
 
         ## Task switching
         - Switch cost avg train - A->A
@@ -286,10 +309,111 @@ class FeatureExtraction:
         return rFeatures
 
 
+    """
+        Table Refer:
+            /*
+              1 - Name of task: go or nogo / training or trial
+              2 - The response speed (in nogo trials, this is 2000, the timeout)
+              3 - The error status (0 is correct, 1 is error)
+            */
+            "GoNoGo" : [
+                "GoNoGoAndTestOrTrial", 
+                 - 'goGoNoGoTraining', goGoNoGoTesting, nogoGoNoGoTraining, nogoGoNoGoTesting
+                "ResponseTimeMs", 
+                "ErrorStatus"
+            ],
+            
+            // Craft the CSV 
+            var finalData = {
+                // Errors are on no go 
+                "avgErrorTraining": (errorCounterTraining / NoGoTrials),
+                "avgErrorTesting": (errorCounterTesting / NoGoTrials),
+                "goNoGoTestingMinResponseTimeMS": goNoGoTestingMin,
+                "goNoGoTrainingMinResponseTimeMS": goNoGoTrainingMin,
+                "goNoGoTrainingMean": (goNoGoTrainingTotal / goNoGoTrainingTrials),
+                "goNoGoTestingMean": (goNoGoTestingTotal / goNoGoTestingTrials)
+            }
+    """
     @staticmethod
     def extract_goNoGo_features(data: SubjectDataStructured)-> [int]:
-        rFeatures = []
-        return rFeatures
+        # Count errors for no go's
+        totalNoGoTrialsTraining = 0
+        totalNoGoTrialsTesting = 0
+        totalNoGoTrainingErrors=0
+        totalNoGoTestingErrors=0
+
+
+        # Get Avg for training/testing go's
+        totalGoTrialsTesting = 0
+        totalGoTrialsTraining = 0
+        totalGoResponseTimeTesting = 0
+        totalGoResponseTimeTraining = 0
+
+        # Get peaks (min) response time for go's
+        goTestingMin = None
+        goTrainingMin = None
+
+        for goNoGoRecord in data.goNoGoStructured:
+            """
+            "GoNoGoAndTestOrTrial", 
+                - 'goGoNoGoTraining', goGoNoGoTesting, nogoGoNoGoTraining, nogoGoNoGoTesting
+            """
+            if goNoGoRecord["GoNoGoAndTestOrTrial"] == "nogoGoNoGoTraining":
+                totalNoGoTrialsTraining+=1
+                if goNoGoRecord["ErrorStatus"] == "1":
+                    totalNoGoTrainingErrors+=1
+            elif goNoGoRecord["GoNoGoAndTestOrTrial"] == "goGoNoGoTesting":
+                totalGoTrialsTesting+=1
+
+                responeTime = float(
+                    goNoGoRecord["ResponseTimeMs"]
+                )
+
+                totalGoResponseTimeTesting+=responeTime
+
+                if goTestingMin == None or goTestingMin > responeTime:
+                    goTestingMin = responeTime
+            elif goNoGoRecord["GoNoGoAndTestOrTrial"] == "nogoGoNoGoTesting":
+                totalNoGoTrialsTesting+= 1
+                if goNoGoRecord["ErrorStatus"] == "1":
+                    totalNoGoTestingErrors += 1
+            else:
+                # Inferred training go trials
+                totalGoTrialsTraining += 1
+                responeTime = float(
+                    goNoGoRecord["ResponseTimeMs"]
+                )
+
+                totalGoResponseTimeTraining += responeTime
+
+
+                if goTrainingMin == None or goTrainingMin > responeTime:
+                    goTrainingMin = responeTime
+
+        avgErrorTraining = (
+            totalNoGoTrainingErrors / totalNoGoTrialsTraining
+        )
+
+        avgErrorTesting = (
+            totalNoGoTestingErrors / totalNoGoTrialsTesting
+        )
+
+        goNoGoTrainingMean = (
+            totalGoResponseTimeTraining / totalGoTrialsTraining
+        )
+
+        goNoGoTestingMean = (
+            totalGoResponseTimeTesting / totalGoTrialsTesting
+        )
+
+        return [
+            avgErrorTesting,
+            avgErrorTraining,
+            goNoGoTrainingMean,
+            goNoGoTestingMean,
+            goTestingMin,
+            goTrainingMin
+        ]
 
 
     @staticmethod
@@ -300,34 +424,37 @@ class FeatureExtraction:
 
     @staticmethod
     def extractFeatures():
-        # TODO NEXT
-        # -- Will create all needed feature vectors + label vector
         print("Begin Feature Extraction")
         for category in DataLoader.SUBJECT_DATA_STRUCTURED.keys():
             for subjectId in DataLoader.SUBJECT_DATA_STRUCTURED[category].keys():
                 subjectData: SubjectDataStructured = DataLoader.SUBJECT_DATA_STRUCTURED[category][subjectId]
                 if subjectData.isUsableData:
-                    FeatureExtraction.add_to_labels_vector(subjectData)
+                    try:
+                        featuresHolder = []
+                        # Feature Extraction. Implicitly adds to
+                        featuresHolder.extend(
+                            FeatureExtraction.extract_goNoGo_features(subjectData)
+                        )
+                        featuresHolder.extend(
+                            FeatureExtraction.extract_reaction_time_features(subjectData)
+                        )
+                        featuresHolder.extend(
+                            FeatureExtraction.extract_posner_features(subjectData)
+                        )
+                        featuresHolder.extend(
+                            FeatureExtraction.extract_task_switch_features(subjectData)
+                        )
 
-                    featuresHolder = []
-                    # Feature Extraction. Implicitly adds to
-                    featuresHolder.extend(
-                        FeatureExtraction.extract_goNoGo_features(subjectData)
-                    )
-                    featuresHolder.extend(
-                        FeatureExtraction.extract_reaction_time_features(subjectData)
-                    )
-                    featuresHolder.extend(
-                        FeatureExtraction.extract_posner_features(subjectData)
-                    )
-                    featuresHolder.extend(
-                        FeatureExtraction.extract_task_switch_features(subjectData)
-                    )
+                        # Creates a 2-Dimensional Array
+                        FeatureExtraction.FEATURES_VECTOR.append(
+                            featuresHolder
+                        )
 
-                    # Creates a 2-Dimensional Array
-                    FeatureExtraction.FEATURES_VECTOR.append(
-                        featuresHolder
-                    )
+                        FeatureExtraction.add_to_labels_vector(subjectData)
+                    except Exception as e:
+                        print(f"Issue parsing this subject: {errorStackTrace(e)}")
+                        print("This data is not usable.")
+                        subjectData.setNotUsable()
 
         print("Feature Extraction complete")
 
@@ -375,3 +502,5 @@ class ModelTesting:
 DataLoader.load_and_serialize_all_data()
 
 FeatureExtraction.extractFeatures()
+
+printUnusableData()
