@@ -190,22 +190,6 @@ class DataLoader:
     Static collection of methods
         for extracting features from the raw CSV data set for the various experiments.
     Creates sets of feature vectors. For each experiment, gather the following for the feature vector set:
-
-        ## Posner
-        All of this crap:
-        "avgValidCueResponseTimeTraining": (totalResponeTimesTrainingCorrectResponseAndValidCue / totalNumberTrainingCorrectResponseAndValidCue),
-        "avgValidCueResponseTimeTesting": (totalResponeTimesTestingCorrectResponseAndValidCue / totalNumberTestingCorrectResponseAndValidCue),
-        "avgInvalidCueResponseTimeTraining": (totalResponeTimesTrainingCorrectResponseAndInvalidCue / totalNumberTrainingCorrectResponseAndInvalidCue),
-        "avgInvalidCueResponseTimeTesting": (totalResponeTimesTestingCorrectResponseAndInvalidCue / totalNumberTestingCorrectResponseAndInvalidCue),
-        "totalInvalidCuesTesting": totalInvalidCuesTesting,
-        "totalInvalidCuesTraining":totalInvalidCuesTraining,
-        "percentageMissedInvalidCuesTraining": (incorrectResponseForUncuedTraining / totalInvalidCuesTraining),
-        "percentageMissedInvalidCuesTesting": (incorrectResponseForUncuedTesting/ totalInvalidCuesTesting),
-        "peakTestingValueValidCues": peakTestingValueValidCues,
-        "peakTestingValueInvalidCues": peakTestingValueInvalidCues,
-        "peakTrainingValueInvalidCues": peakTrainingValueInvalidCues,
-        "peakTrainingValueValidCues": peakTrainingValueValidCues
-
 """
 class FeatureExtraction:
 
@@ -298,6 +282,25 @@ class FeatureExtraction:
             avgReactionTimeAcrossAllTrials
         ]
 
+
+    """
+        TODO - Posner features
+        
+        ## Posner
+        All of this crap:
+        "avgValidCueResponseTimeTraining": (totalResponeTimesTrainingCorrectResponseAndValidCue / totalNumberTrainingCorrectResponseAndValidCue),
+        "avgValidCueResponseTimeTesting": (totalResponeTimesTestingCorrectResponseAndValidCue / totalNumberTestingCorrectResponseAndValidCue),
+        "avgInvalidCueResponseTimeTraining": (totalResponeTimesTrainingCorrectResponseAndInvalidCue / totalNumberTrainingCorrectResponseAndInvalidCue),
+        "avgInvalidCueResponseTimeTesting": (totalResponeTimesTestingCorrectResponseAndInvalidCue / totalNumberTestingCorrectResponseAndInvalidCue),
+        "totalInvalidCuesTesting": totalInvalidCuesTesting,
+        "totalInvalidCuesTraining":totalInvalidCuesTraining,
+        "percentageMissedInvalidCuesTraining": (incorrectResponseForUncuedTraining / totalInvalidCuesTraining),
+        "percentageMissedInvalidCuesTesting": (incorrectResponseForUncuedTesting/ totalInvalidCuesTesting),
+        "peakTestingValueValidCues": peakTestingValueValidCues,
+        "peakTestingValueInvalidCues": peakTestingValueInvalidCues,
+        "peakTrainingValueInvalidCues": peakTrainingValueInvalidCues,
+        "peakTrainingValueValidCues": peakTrainingValueValidCues
+    """
     @staticmethod
     def extract_posner_features(data: SubjectDataStructured)-> [int]:
         rFeatures = []
@@ -524,6 +527,9 @@ class FeatureExtraction:
         ]
 
 
+    """
+        Main entry point for featur extraction. Creates label AND feature vectors. 
+    """
     @staticmethod
     def extractFeatures():
         print("Begin Feature Extraction")
