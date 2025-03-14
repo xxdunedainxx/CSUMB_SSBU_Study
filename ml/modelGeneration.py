@@ -91,6 +91,7 @@ class SubjectDataStructured:
             len(self.posnerDataStructured) == 0:
             self.isUsableData = False
 
+    # TODO - Add a 'reason' why the data is not usable (bad data format, outlier, etc..)
     def setNotUsable(self):
         self.isUsableData = False
 
@@ -189,12 +190,6 @@ class DataLoader:
     Static collection of methods
         for extracting features from the raw CSV data set for the various experiments.
     Creates sets of feature vectors. For each experiment, gather the following for the feature vector set:
-
-        ## Task switching
-        - Switch cost avg train - A->A
-        - Switch cost avg train - A->B
-        - Switch cost avg test  - A->A
-        - Switch cost avg test  - A->B
 
         ## Posner
         All of this crap:
@@ -416,10 +411,117 @@ class FeatureExtraction:
         ]
 
 
+    """
+        ## Task switching
+        - Switch cost avg train - A->A
+        - Switch cost avg train - A->B
+        - Switch cost avg test  - A->A
+        - Switch cost avg test  - A->B
+    """
     @staticmethod
     def extract_task_switch_features(data: SubjectDataStructured) -> [int]:
-        rFeatures = []
-        return rFeatures
+        """
+        // Algo:
+        // - filter incorrect SWITCH trials
+        // - calculate on switch-repeat pairs
+        // -- 1=task switch , 0=task repeat 'taskSwitchOrTaskRepeat' column
+        // -- status (1=correct, 2=error, 3=too slow)
+        :param data:
+        :return:
+        """
+
+        trainingTotalSwitchCost = 0
+        trainingTotalSwitchEvents = 0
+        trainingTotalSwitchErrors = 0
+
+        testingTotalSwitchCost = 0
+        testingTotalSwitchEvents = 0
+        testingTotalSwitchErrors = 0
+
+        """
+            /*
+              1 - letter | numbers | mixed and TestOrTrial
+              2 - position of stimulus 1,2,3,4 (top left, top right, bottom right, bottom left
+              3 - tasktype (1 or 2)
+              4 - the letter stimulus
+              5 - the number stimulus
+              6 - type of block (1=just task 1; 2=just task 2; 0=both tasks mixed)
+              7 - 1=task switch , 0=task repeat
+              8 - status (1=correct, 2=error, 3=too slow)
+              9 - response time (ms)
+              10 - total time (response time + button release time)
+            */
+            "TaskSwitching" : [
+                "TaskSwitchTypeAndTestOrTrial",
+                "position",
+                "taskType",
+                "letterStimulus",
+                "numberStimulus",
+                "typeOfBlock",
+                "taskSwitchOrTaskRepeat",
+                "status",
+                "responseTimeMs",
+                "totalTimeMs"
+            ],
+        """
+        i = 0
+        for taskSwitchingData in data.taskSwitchingDataStructured:
+            if "Training" in taskSwitchingData["TaskSwitchTypeAndTestOrTrial"]:
+                # Task Switch
+                if taskSwitchingData["taskSwitchOrTaskRepeat"] == '1':
+                    trainingTotalSwitchEvents += 1
+
+                    if taskSwitchingData["status"] == "1":
+                        trainingTotalSwitchCost += (
+                                float(data.taskSwitchingDataStructured[i]["responseTimeMs"]) -
+                                float(data.taskSwitchingDataStructured[i+1]["responseTimeMs"])
+                        )
+                    else:
+                        trainingTotalSwitchErrors+=1
+
+                        # Punish total switch cost for errors
+                        trainingTotalSwitchCost+=(float(data.taskSwitchingDataStructured[i+1]["responseTimeMs"]) * .25)
+            else:
+                # Task Switch
+                if taskSwitchingData["taskSwitchOrTaskRepeat"] == '1':
+                    testingTotalSwitchEvents += 1
+                    if taskSwitchingData["status"] == "1":
+                        testingTotalSwitchCost += (
+                                float(data.taskSwitchingDataStructured[i]["responseTimeMs"]) -
+                                float(data.taskSwitchingDataStructured[i+1]["responseTimeMs"])
+                        )
+                    else:
+                        testingTotalSwitchErrors+=1
+
+                        # Punish total switch cost for errors
+                        testingTotalSwitchCost += (
+                                float(data.taskSwitchingDataStructured[i + 1]["responseTimeMs"]) * .25
+                        )
+            # Used for [N] - [N-1]
+            i+=1
+
+        # Train data
+        avgTrainingError = (
+            trainingTotalSwitchErrors / trainingTotalSwitchEvents
+        )
+        trainingSwitchCost = (
+            trainingTotalSwitchCost / trainingTotalSwitchEvents
+        )
+
+        # Test Data
+        avgTestingError = (
+            testingTotalSwitchErrors / testingTotalSwitchEvents
+        )
+        testingSwitchCost = (
+            testingTotalSwitchCost / testingTotalSwitchEvents
+        )
+
+        return [
+            avgTrainingError,
+            trainingSwitchCost,
+            avgTestingError,
+            testingSwitchCost
+        ]
 
 
     @staticmethod
@@ -503,4 +605,5 @@ DataLoader.load_and_serialize_all_data()
 
 FeatureExtraction.extractFeatures()
 
+# Simple Report on what data was actually usable, vs thrown out.
 printUnusableData()
