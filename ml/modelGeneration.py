@@ -191,27 +191,145 @@ class DataLoader:
 """
 class FeatureExtraction:
 
-    @staticmethod
-    def extract_reaction_time_features():
-        pass
+    # Holds all labels
+    LABELS_VECTOR=[]
+
+    # Holds all feature vectors
+    FEATURES_VECTOR=[]
 
     @staticmethod
-    def extract_posner_features():
-        pass
+    def add_to_labels_vector(data: SubjectDataStructured):
+        # Add objects category as the 'label'
+        FeatureExtraction.LABELS_VECTOR.append(
+            data.category
+        )
+
+    """
+    FEATURES:
+        * avgTrainingReactionTime - Average Reaction time during training set
+        * avgTestingReactionTime - Average Reaction time during testing set
+        * avgReactionTimeAcrossAllTrials - Average across all trials   
+        
+    Data Structure Reference:
+            /*
+                Ref: https://www.psytoolkit.org/experiment-library/deary_liewald.html
+                1 - Test or trials 
+                2 - training (1=training, 0=real data collection)
+                3 - number of choices (1 in simple block, 4 in choice block)
+                4 - time between response and next trial (between 1 and 3 seconds)
+                5 - the x-coordinate of the target stimulus
+                6 - the response time (ms)
+                7 - status (1=correct, 2=error, 3=too slow)
+            */
+            "SimpleReaction" : [
+                "TestOrTrial",
+                "TrainingOrReal",
+                "NumberOfChoices",
+                "timeBetweenResponseAndNextTrial",
+                "XCoordinateTargetStim",
+                "ResponseTime",
+                "StatusOfAnswer"
+            ],
+    """
+    @staticmethod
+    def extract_reaction_time_features(data: SubjectDataStructured) -> [int]:
+        if len(data.simpleReactionStructured) == 0:
+            # throw this record out
+            return None
+
+        totalTrainingRecords: int = 0
+        totalTestingRecords: int = 0
+        totalTrials: int = 0
+
+        totalTrainingTime: int = 0
+        totalTestingTime: int = 0
+        totalTime: int = 0
+
+        for reactionTimeData in data.simpleReactionStructured:
+
+            if reactionTimeData["TrainingOrReal"] == '1':
+                totalTrainingRecords+=1
+                totalTrainingTime+=float(
+                    reactionTimeData["ResponseTime"]
+                )
+            else:
+                totalTestingRecords+=1
+                totalTestingTime+=float(
+                    reactionTimeData["ResponseTime"]
+                )
+            totalTrials+=1
+            totalTime+=float(
+                reactionTimeData["ResponseTime"]
+            )
+
+        avgTestingReactionTime=(
+            totalTestingTime / totalTestingRecords
+        )
+
+        avgTrainingReactionTime = (
+            totalTrainingTime / totalTrainingRecords
+        )
+
+        avgReactionTimeAcrossAllTrials = (
+            totalTime / totalTrials
+        )
+
+        return [
+            avgTestingReactionTime,
+            avgTrainingReactionTime,
+            avgReactionTimeAcrossAllTrials
+        ]
 
     @staticmethod
-    def extract_goNoGo_features():
-        pass
+    def extract_posner_features(data: SubjectDataStructured)-> [int]:
+        rFeatures = []
+        return rFeatures
+
 
     @staticmethod
-    def extract_task_switch_features():
-        pass
+    def extract_goNoGo_features(data: SubjectDataStructured)-> [int]:
+        rFeatures = []
+        return rFeatures
+
+
+    @staticmethod
+    def extract_task_switch_features(data: SubjectDataStructured) -> [int]:
+        rFeatures = []
+        return rFeatures
+
 
     @staticmethod
     def extractFeatures():
         # TODO NEXT
         # -- Will create all needed feature vectors + label vector
-        pass
+        print("Begin Feature Extraction")
+        for category in DataLoader.SUBJECT_DATA_STRUCTURED.keys():
+            for subjectId in DataLoader.SUBJECT_DATA_STRUCTURED[category].keys():
+                subjectData: SubjectDataStructured = DataLoader.SUBJECT_DATA_STRUCTURED[category][subjectId]
+                if subjectData.isUsableData:
+                    FeatureExtraction.add_to_labels_vector(subjectData)
+
+                    featuresHolder = []
+                    # Feature Extraction. Implicitly adds to
+                    featuresHolder.extend(
+                        FeatureExtraction.extract_goNoGo_features(subjectData)
+                    )
+                    featuresHolder.extend(
+                        FeatureExtraction.extract_reaction_time_features(subjectData)
+                    )
+                    featuresHolder.extend(
+                        FeatureExtraction.extract_posner_features(subjectData)
+                    )
+                    featuresHolder.extend(
+                        FeatureExtraction.extract_task_switch_features(subjectData)
+                    )
+
+                    # Creates a 2-Dimensional Array
+                    FeatureExtraction.FEATURES_VECTOR.append(
+                        featuresHolder
+                    )
+
+        print("Feature Extraction complete")
 
 """  
     Naive bayes: 
