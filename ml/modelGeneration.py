@@ -300,11 +300,112 @@ class FeatureExtraction:
         "peakTestingValueInvalidCues": peakTestingValueInvalidCues,
         "peakTrainingValueInvalidCues": peakTrainingValueInvalidCues,
         "peakTrainingValueValidCues": peakTrainingValueValidCues
+        
+        
     """
     @staticmethod
     def extract_posner_features(data: SubjectDataStructured)-> [int]:
-        rFeatures = []
-        return rFeatures
+        totalNumberTrainingCorrectResponseAndValidCue = 0
+        totalResponeTimesTrainingCorrectResponseAndValidCue = 0
+
+        totalResponeTimesTestingCorrectResponseAndValidCue = 0
+        totalNumberTestingCorrectResponseAndValidCue = 0
+
+        totalResponeTimesTrainingCorrectResponseAndInvalidCue = 0
+        totalNumberTrainingCorrectResponseAndInvalidCue = 0
+
+        totalResponeTimesTestingCorrectResponseAndInvalidCue = 0
+        totalNumberTestingCorrectResponseAndInvalidCue = 0
+
+        totalInvalidCuesTesting = 0
+        totalInvalidCuesTraining = 0
+
+        incorrectResponseForUncuedTraining = 0
+        incorrectResponseForUncuedTesting = 0
+
+        peakTestingValueValidCues = None
+        peakTestingValueInvalidCues = None
+
+        peakTrainingValueInvalidCues = None
+        peakTrainingValueValidCues = None
+
+        for posnerRecord in data.posnerDataStructured:
+
+            isValidCue=(posnerRecord["CueValidity"] != "invalid")
+            isUncued=(posnerRecord["CuedOrUncued"] == "uncued")
+            isBadStatusOfAnswer=(posnerRecord["StatusOfAnswer"] != '1')
+            isValidCueAndGoodStatus=(isValidCue and (not isBadStatusOfAnswer))
+            isInvalidCueAndGoodStatus=(not isValidCue and (not isBadStatusOfAnswer))
+            isIncorrectResponseForUncued=(isUncued and isBadStatusOfAnswer)
+
+
+            responsetime=(
+                float(
+                    posnerRecord["ResponsetimeMS"]
+                )
+            )
+
+            # Training processing
+            if posnerRecord["TestOrTraining"] == "cueingBlockTraining":
+                if isValidCueAndGoodStatus:
+                    totalNumberTrainingCorrectResponseAndValidCue+=1
+                    totalResponeTimesTrainingCorrectResponseAndValidCue+=responsetime
+                elif isInvalidCueAndGoodStatus:
+                    totalNumberTrainingCorrectResponseAndInvalidCue += 1
+                    totalResponeTimesTrainingCorrectResponseAndInvalidCue += responsetime
+
+                if not isValidCue:
+                    totalInvalidCuesTraining += 1
+
+                    if peakTrainingValueInvalidCues == None or peakTrainingValueInvalidCues > responsetime:
+                        peakTrainingValueInvalidCues = responsetime
+                else:
+                    if peakTrainingValueValidCues == None or peakTrainingValueValidCues > responsetime:
+                        peakTrainingValueValidCues = responsetime
+
+                if isIncorrectResponseForUncued:
+                    incorrectResponseForUncuedTraining += 1
+            # Testing processing
+            else:
+                if isValidCueAndGoodStatus:
+                    totalNumberTestingCorrectResponseAndValidCue += 1
+                    totalResponeTimesTestingCorrectResponseAndValidCue += responsetime
+                elif isInvalidCueAndGoodStatus:
+                    totalNumberTestingCorrectResponseAndInvalidCue += 1
+                    totalResponeTimesTestingCorrectResponseAndInvalidCue += responsetime
+
+                if not isValidCue:
+                    totalInvalidCuesTesting += 1
+                    if peakTestingValueInvalidCues == None or peakTestingValueInvalidCues > responsetime:
+                        peakTestingValueInvalidCues = responsetime
+                else:
+                    if peakTestingValueValidCues == None or peakTestingValueValidCues > responsetime:
+                        peakTestingValueValidCues = responsetime
+
+                if isIncorrectResponseForUncued:
+                    incorrectResponseForUncuedTesting += 1
+
+        avgValidCueResponseTimeTraining =  (totalResponeTimesTrainingCorrectResponseAndValidCue / totalNumberTrainingCorrectResponseAndValidCue)
+        avgInvalidCueResponseTimeTraining = (totalResponeTimesTrainingCorrectResponseAndInvalidCue / totalNumberTrainingCorrectResponseAndInvalidCue)
+
+        avgValidCueResponseTimeTesting = (totalResponeTimesTestingCorrectResponseAndValidCue / totalNumberTestingCorrectResponseAndValidCue)
+        avgInvalidCueResponseTimeTesting = (totalResponeTimesTestingCorrectResponseAndInvalidCue / totalNumberTestingCorrectResponseAndInvalidCue)
+
+        percentageMissedInvalidCuesTraining = (incorrectResponseForUncuedTraining / totalInvalidCuesTraining)
+        percentageMissedInvalidCuesTesting = (incorrectResponseForUncuedTesting/ totalInvalidCuesTesting)
+
+        return [
+            avgValidCueResponseTimeTraining,
+            avgValidCueResponseTimeTesting,
+            avgInvalidCueResponseTimeTesting,
+            avgInvalidCueResponseTimeTraining,
+            percentageMissedInvalidCuesTraining,
+            percentageMissedInvalidCuesTesting,
+            peakTestingValueInvalidCues,
+            peakTrainingValueInvalidCues,
+            peakTestingValueValidCues,
+            peakTrainingValueValidCues
+        ]
 
 
     """
