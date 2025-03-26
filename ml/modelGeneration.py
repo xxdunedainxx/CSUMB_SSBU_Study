@@ -606,10 +606,19 @@ TODO
 class ModelTesting:
     pass
 
+def main():
+    try:
+        # Data mining step. Extract and structure all data
+        DataLoader.load_and_serialize_all_data()
 
-DataLoader.load_and_serialize_all_data()
+        # Feature Extraction step. Format and extract all relevant feature vectors and label data.
+        FeatureExtraction.extractFeatures()
 
-FeatureExtraction.extractFeatures()
+        # Simple Report on what data was actually usable, vs thrown out.
+        printUnusableData()
+    except Exception as e:
+        print(f"Exception occurred: {errorStackTrace(e)}")
+        raise e
 
-# Simple Report on what data was actually usable, vs thrown out.
-printUnusableData()
+if __name__ == "__main__":
+    main()
