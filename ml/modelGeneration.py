@@ -1,13 +1,20 @@
 # Model training and testing
 
-# Imports
+# General Imports
 import os
 import csv
 import sys, traceback
 
+# Data science / Visualization libs
+import pandas
+from pandas.plotting import parallel_coordinates
+import matplotlib.pyplot as plt
+import matplotlib.pylab as pylab
+from mplcursors import cursor
 
 # Globals
 DATA_SET='/Users/zachmcfadden/Desktop/dev/tmp/smashStudyDataSet'
+PLOTS_DIRECTORY="./tmp"
 
 def errorStackTrace(e):
     exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -15,6 +22,16 @@ def errorStackTrace(e):
     errorMessage = ("STACK TRACE ERROR :: " + str(e) + ".. Line number: " + str(
         exc_tb.tb_lineno) + "-- STACK TRACEBACK: " + str(trace))
     return errorMessage
+
+# Util function for saving the plot to a file under './plots/'
+def save_plot(plotName: str):
+    # If dir isnt there, create it
+    if not os.path.exists(PLOTS_DIRECTORY):
+        print("Creating plots directory!")
+        os.mkdir(PLOTS_DIRECTORY)
+
+    print(f"Saving plot: {plotName}.png")
+    plt.savefig(f"{PLOTS_DIRECTORY}{os.sep}{plotName}")
 
 def printUnusableData():
     totalUnused = 0
@@ -41,6 +58,19 @@ class DataCategories:
     # In case there's an untracked data category to clean up later
     UNKNOWN: str = "UNKNOWN"
 
+"""
+Simple utility enum for fetching data from the Feature vectors 
+"""
+class FeaturesLocation:
+    avgErrorTesting = 0
+    avgErrorTraining = 1
+    goNoGoTrainingMean = 2
+    goNoGoTestingMean = 3
+    goTestingMin = 4
+    goTrainingMi = 5
+    avgTestingReactionTime = 6
+    avgTrainingReactionTime = 7
+    avgReactionTimeAcrossAllTrials = 8
 
 """
     Simple storage class for participant data 
@@ -667,6 +697,130 @@ class FeatureExtraction:
 
         print("Feature Extraction complete")
 
+class FeaturesVisualizations:
+
+    @staticmethod
+    def create_visualizations():
+        FeaturesVisualizations.reaction_time_parallel_coordinate_plot()
+
+        FeaturesVisualizations.go_no_go_stacked_bar_plot()
+
+        FeaturesVisualizations.task_switching_mosaic_plot()
+
+    @staticmethod
+    def reaction_time_parallel_coordinate_plot():
+        print("Creating reaction time parallel coordinate plot")
+        # Grab the testing/training/total averages and average them per category
+
+        parralelCoordinatePlotArray = []
+        parralelCoordinatePlotDict = {}
+        i = 0
+        for featureData in FeatureExtraction.FEATURES_VECTOR:
+            category = FeatureExtraction.LABELS_VECTOR[i]
+            avgTrain = featureData[FeaturesLocation.avgTrainingReactionTime]
+            avgTest = featureData[FeaturesLocation.avgTestingReactionTime]
+            totalReact = featureData[FeaturesLocation.avgReactionTimeAcrossAllTrials]
+
+            if category not in parralelCoordinatePlotDict.keys():
+                parralelCoordinatePlotDict[category] = {}
+                parralelCoordinatePlotDict[category]["totalTrain"] = 0
+                parralelCoordinatePlotDict[category]["totalTest"] = 0
+                parralelCoordinatePlotDict[category]["totalReact"] = 0
+                parralelCoordinatePlotDict[category]["totalRecords"] = 0
+
+            parralelCoordinatePlotDict[category]["totalTrain"] += avgTrain
+            parralelCoordinatePlotDict[category]["totalTest"] += avgTest
+            parralelCoordinatePlotDict[category]["totalReact"] += totalReact
+            parralelCoordinatePlotDict[category]["totalRecords"] += 1
+            i+=1
+
+
+        # TODO -- Create plot w/ and without non-gamers
+        # del parralelCoordinatePlotDict[DataCategories.NG]
+
+        for category in parralelCoordinatePlotDict.keys():
+
+            parralelCoordinatePlotArray.append(
+                [
+                    category,
+                    parralelCoordinatePlotDict[category]["totalTrain"] / parralelCoordinatePlotDict[category]["totalRecords"],
+                    parralelCoordinatePlotDict[category]["totalTest"] / parralelCoordinatePlotDict[category]["totalRecords"],
+                    parralelCoordinatePlotDict[category]["totalReact"] / parralelCoordinatePlotDict[category]["totalRecords"]
+                ]
+            )
+
+
+
+        parralelCoordinatePlotDf = pandas.DataFrame(
+            parralelCoordinatePlotArray,
+            columns=[
+                "category",
+                "avgTrain",
+                "avgTest",
+                "totalReact"
+            ]
+        )
+
+        # parralelCoordinateDF = parralelCoordinatePlotDf.sort_values(
+        #     by=["mean"],
+        #     ascending=False
+        # )
+
+        plt.title('Reaction times by subject category', size=15, weight="bold")
+        plt.ylabel("Reaction time (ms)", size=15, weight="bold")
+
+        # # Setup parralel coordinates via DF with the legend collumn attached to 'key'
+        pylab.rcParams.update(
+            {
+                # Adjust top display text
+                "ytick.labelsize": 10,
+                "xtick.labelsize": 10
+            }
+        )
+
+        ax = parallel_coordinates(
+            parralelCoordinatePlotDf,
+            "category",
+            axvlines=True,
+        )
+        ax.grid(True)
+
+        # Adjust xaxix and yaxis ticket size for readability
+        ax.xaxis.tick_top()
+        ax.xaxis.set_tick_params(
+            labelsize=20
+        )
+        ax.yaxis.set_tick_params(
+            labelsize=20
+        )
+        #
+        # # Attach legend with anchor to push it outside of the graph
+        # # This keeps the graph less cluttered
+        plt.legend(
+            parralelCoordinatePlotDf["category"],
+            loc='upper left',
+            prop={
+                'weight': 'bold',
+                'size': 11.1
+            },
+            ncol=3
+        )
+        ap = [{'horizontalalignment': 'right', 'verticalalignment': 'top',
+               'anncoords': 'offset points', 'position': (50, 50)}]
+        cursor(hover=True, annotation_positions=ap)
+        save_plot("parallel")
+        plt.show()
+        return
+
+
+    @staticmethod
+    def go_no_go_stacked_bar_plot():
+        pass
+
+    @staticmethod
+    def task_switching_mosaic_plot():
+        pass
+
 """  
     Naive bayes: 
     
@@ -717,6 +871,10 @@ def main():
 
         # Simple Report on what data was actually usable, vs thrown out.
         printUnusableData()
+
+        # Create some visualizations from preliminary data
+        FeaturesVisualizations.create_visualizations()
+
     except Exception as e:
         print(f"Exception occurred: {errorStackTrace(e)}")
         raise e
