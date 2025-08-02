@@ -18,6 +18,7 @@ English:
 Japanese:
 
 * [Reaction times](https://xxdunedainxx.github.io/CSUMB_SSBU_Study/site/SimpleReactionOnlyJapanese.html)
+* [Go no go](https://xxdunedainxx.github.io/CSUMB_SSBU_Study/site/GoNoGoJapanese.html)
 
 ## Contact
 
