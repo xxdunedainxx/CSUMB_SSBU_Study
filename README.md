@@ -8,10 +8,16 @@ Our github pages site can be found [here](https://xxdunedainxx.github.io/CSUMB_S
 
 See links below for demos of our experiments:
 
+English:
+
 * [TaskSwitching](https://xxdunedainxx.github.io/CSUMB_SSBU_Study/site/TaskSwitching.html)
 * [Reaction times](https://xxdunedainxx.github.io/CSUMB_SSBU_Study/site/SimpleReactionOnly.html)
 * [Posner Queues](https://xxdunedainxx.github.io/CSUMB_SSBU_Study/site/Posner.html)
 * [Go No go](https://xxdunedainxx.github.io/CSUMB_SSBU_Study/site/GoNoGo.html)
+
+Japanese:
+
+* [Reaction times](https://xxdunedainxx.github.io/CSUMB_SSBU_Study/site/SimpleReactionOnlyJapanese.html)
 
 ## Contact
 
@@ -19,6 +25,7 @@ Want more info or want to participate? Shoot us an email!
 
 * zrmmaster92@gmail.com
 * smachek@csumb.edu
+
 
 ## General Info 
 
