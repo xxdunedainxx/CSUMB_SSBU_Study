@@ -19,6 +19,14 @@ Japanese:
 
 * [Reaction times](https://xxdunedainxx.github.io/CSUMB_SSBU_Study/site/SimpleReactionOnlyJapanese.html)
 
+## Contact
+
+Want more info or want to participate? Shoot us an email! 
+
+* zrmmaster92@gmail.com
+* smachek@csumb.edu
+
+
 ## General Info 
 
 Experiment code for a 'Super Smash Bros Ultimate', cognitive research study, where we are attempting to observe various cognitive capabilities in relationship to players of super smash brothers. This experiment is being conducted at [CSU Monterey Bay](https://csumb.edu/).

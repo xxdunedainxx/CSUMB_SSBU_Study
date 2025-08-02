@@ -22,10 +22,14 @@
   * Update: February 8th, 2025 - Make trials configurable (ex demo site). 
     - Go/No-go automated status enhancement. Deprecate old automated stats method 
   * Update: February 8th, 2025 - Posner Stats 
+  * Update: February 13th, 2025 - Add 'isDemoSite' flag, and ability to output demo data via 'alert' -- applies to SimpleReactionTime only right now 
+  * Update: February 14th, 2025 - Add QR code for main github site info after 'demo'
+  * Update: February 15th, 2025 - Remove @Deprecated methods 
+  * Update: February 15th 2025 - Simple reaction time basic automated stats 
 */ 
 
 // Semantic versioning for the app 
-VERSION="1.0.5"
+VERSION="1.0.9"
 
 // Store global vars 
 var GLOBAL_VARIABLE_STASH = {}
@@ -37,7 +41,7 @@ var SimpleReactionTest = 20
 // go/no-go vars
 var GoTrials = 20
 var NoGoTrials = 5 
-
+var isDemoSite = false 
 
 /*
  * Simple utility function for downloading a document of a particular content type.
@@ -195,13 +199,13 @@ function parseHttpArgs(experimentName){
     TOTAL_TRIALS_VAR = parseInt(trials)
   } 
 
-  var simpleReactionTrain = selfReferenceURL.searchParams.get("simpleReactionTrain")
+  var simpleReactionTrain = selfReferenceURL.searchParams.get("SimpleReactionTrain")
   if(simpleReactionTrain != null){
      SimpleReactionTrain = parseInt(simpleReactionTrain)
      console.log(SimpleReactionTrain)
   }
 
-  var simpleReactionTest = selfReferenceURL.searchParams.get("simpleReactionTest")
+  var simpleReactionTest = selfReferenceURL.searchParams.get("SimpleReactionTest")
   if(simpleReactionTest != null){
     SimpleReactionTest = parseInt(simpleReactionTest)
     console.log(SimpleReactionTest)
@@ -217,6 +221,11 @@ function parseHttpArgs(experimentName){
     NoGoTrials = noGoTrials
   }
 
+  var isDemo = selfReferenceURL.searchParams.get("isDemoSite")
+  if(isDemo != null){
+    isDemoSite = true 
+  }
+
 }
 
 /**
@@ -225,7 +234,7 @@ function parseHttpArgs(experimentName){
 function initGlobalVariableStash(experimentName){
     console.log("Global variables stash init")
     if(experimentName == "PosnerCue"){
-    	TOTAL_TRIALS_VAR = 13 // 13 for posner 
+      TOTAL_TRIALS_VAR = 13 // 13 for posner 
     }
     parseHttpArgs(experimentName)
 }
@@ -494,128 +503,245 @@ function calculateGoNoGo(data) {
 }
 
 function countTowardCues(CueValidityAsNumber, StatusOfAnswer){
-	console.log(CueValidityAsNumber)
-	console.log(StatusOfAnswer)
+  console.log(CueValidityAsNumber)
+  console.log(StatusOfAnswer)
 
-	return parseInt(CueValidityAsNumber) == 1 && parseInt(StatusOfAnswer) == 1
+  return parseInt(CueValidityAsNumber) == 1 && parseInt(StatusOfAnswer) == 1
 }
 
 function countTowardInvalidCues(CueValidityAsNumber, StatusOfAnswer){
-	return parseInt(CueValidityAsNumber) == 0 && parseInt(StatusOfAnswer) == 1
+  return parseInt(CueValidityAsNumber) == 0 && parseInt(StatusOfAnswer) == 1
 }
 
 function countTowardIncorrectOnInvalidCues(CueValidityAsNumber, StatusOfAnswer){
-	return parseInt(CueValidityAsNumber) == 0 && parseInt(StatusOfAnswer) != 1	
+  return parseInt(CueValidityAsNumber) == 0 && parseInt(StatusOfAnswer) != 1  
 }
 
+/**
+  Simple check if its invalid 
+*/
+function isInvalidCue(CueValidity){
+  return CueValidity == "invalid"
+}
+
+/*
+  Checks if status != 1 
+*/
+function isBadStatus(StatusOfAnswer) {
+  return parseInt(StatusOfAnswer) != 1
+}
+
+/*
+  Simple method to check if its an uncued trial 
+*/
+function isUncued(CuedOrUncued){
+  return CuedOrUncued == "uncued"
+}
+
+/*
+  Checks is status == 1 && if cue validity = 1
+*/
+function isValidCueAndGoodStatus(StatusOfAnswer, CueValidityAsNumber){
+  return StatusOfAnswer == 1 && CueValidityAsNumber == 1
+}
+
+/*
+  helper to determine min (peak value for response times typically)
+*/
+function isMinValue(previousMin, currentVal){
+  return previousMin == null || (previousMin > currentVal)
+}
+
+/**
+  Automated stats for the posner cue task 
+
+  * Average response for train/test: when statusofanswer == 1 & cue validity = 1, and status=1 valid = 0
+    - peak values (min) for both 1-1 & 0-1
+    - incorrect responses for 1-1
+    - incorrect response % = status=2/3 for uncued, response = invalid 
+    - count # of invalid 
+*/
 function calculatePosnerCueStats(data){
+
   var dataSerialized = serializeOutputDataToTable(data, "PosnerCue")
-  // Cue block training and testing means (response time for CueValidityAsNumber=1 && StatusOfAnswer=1)
-  var totalCues = 0
-  var sumCueResponseTimes = 0
 
-  var totalInvalidCues = 0 
-  var sumInvalidCueResponseTimes = 0 
+  // TRAIN Status = 1, cue valid = 1, 
+  var totalNumberTrainingCorrectResponseAndValidCue = 0
+  var totalResponeTimesTrainingCorrectResponseAndValidCue = 0
 
-  var totalIncorrectOnInvalidCues = 0 
+  // TRAIN Status = 1,  valid = 0
+  var totalNumberTrainingCorrectResponseAndInvalidCue = 0
+  var totalResponeTimesTrainingCorrectResponseAndInvalidCue = 0
+
+  // TEST Status = 1, cue valid = 1, 
+  var totalNumberTestingCorrectResponseAndValidCue = 0
+  var totalResponeTimesTestingCorrectResponseAndValidCue = 0
+
+  // TEST Status = 1,  valid = 0
+  var totalNumberTestingCorrectResponseAndInvalidCue = 0
+  var totalResponeTimesTestingCorrectResponseAndInvalidCue = 0
+
+  // # Of stats=2/3 for uncued, response = invalid 
+  // used to calculate percentage later 
+  var incorrectResponseForUncuedTraining = 0
+  var incorrectResponseForUncuedTesting = 0
+
+  // Simple sum 
+  var totalInvalidCuesTesting = 0 
+  var totalInvalidCuesTraining = 0 
+
+  // Peak response time for train v test status=1, valid = 1/0
+  var peakTrainingValueValidCues=null
+  var peakTestingValueValidCues=null
+
+  var peakTrainingValueInvalidCues=null
+  var peakTestingValueInvalidCues=null
+
+
   console.log(dataSerialized)
-  for(var i = 0; i < dataSerialized["ResponsetimeMS"].length; i++){
-		console.log(dataSerialized['CueValidityAsNumber'][i])
-		console.log(dataSerialized['StatusOfAnswer'][i])
 
-  	var responseTimeParsed = parseFloat(dataSerialized["ResponsetimeMS"][i])
-  	console.log(responseTimeParsed)
-  	if(countTowardCues(dataSerialized['CueValidityAsNumber'][i],dataSerialized['StatusOfAnswer'][i])){
-  			console.log("cue count")
-  			totalCues+=1
-  			sumCueResponseTimes+=responseTimeParsed
-  	} else if(countTowardInvalidCues(dataSerialized['CueValidityAsNumber'][i],dataSerialized['StatusOfAnswer'][i])){
-  			console.log("Count invalid cue")
-  			totalInvalidCues+=1
-  			sumInvalidCueResponseTimes+=responseTimeParsed
-  	} else if(countTowardIncorrectOnInvalidCues(dataSerialized['CueValidityAsNumber'][i],dataSerialized['StatusOfAnswer'][i])){
-  			totalIncorrectOnInvalidCues+=1
-  	} else {
-  		console.log("skip")
-  	}
+  for(var i = 0; i < dataSerialized["ResponsetimeMS"].length; i++){
+    // Training set processing 
+    if(dataSerialized["TestOrTraining"][i] == "cueingBlockTraining"){
+      if(isInvalidCue(dataSerialized["CueValidity"][i])){
+        totalInvalidCuesTraining +=1 
+
+        if(isUncued(dataSerialized["CuedOrUncued"][i]) && isBadStatus(dataSerialized["StatusOfAnswer"][i])){
+          incorrectResponseForUncuedTraining+=1
+        }
+
+        // Check if its the peak for training/invalid
+        if(isMinValue(peakTrainingValueInvalidCues,parseInt(dataSerialized["ResponsetimeMS"][i]))){
+          peakTrainingValueInvalidCues = parseInt(dataSerialized["ResponsetimeMS"][i])
+        }
+      } else {
+        // check peak for training/valid
+        if(isMinValue(peakTrainingValueValidCues,parseInt(dataSerialized["ResponsetimeMS"][i]))){
+          peakTrainingValueValidCues = parseInt(dataSerialized["ResponsetimeMS"][i])
+        }
+      }
+
+      if(isValidCueAndGoodStatus(parseInt(dataSerialized["StatusOfAnswer"][i]), 
+          parseInt(dataSerialized["CueValidityAsNumber"][i]))){
+        // TRAINING
+        totalNumberTrainingCorrectResponseAndValidCue+=1
+        totalResponeTimesTrainingCorrectResponseAndValidCue+=parseInt(
+          dataSerialized["ResponsetimeMS"][i]
+        )
+      } else {
+        totalNumberTrainingCorrectResponseAndInvalidCue+=1
+        totalResponeTimesTrainingCorrectResponseAndInvalidCue+=parseInt(
+          dataSerialized["ResponsetimeMS"][i]
+        )
+      }
+
+    } else {
+      // Testing set processing 
+      if(isInvalidCue(dataSerialized["CueValidity"][i])){
+          totalInvalidCuesTesting +=1 
+          if(isUncued(dataSerialized["CuedOrUncued"][i]) && isBadStatus(dataSerialized["StatusOfAnswer"][i])){
+            incorrectResponseForUncuedTesting+=1
+          }
+
+          if(isMinValue(peakTestingValueInvalidCues,parseInt(dataSerialized["ResponsetimeMS"][i]))){
+            peakTestingValueInvalidCues = parseInt(dataSerialized["ResponsetimeMS"][i])
+          }
+      } else {
+        // check peak for testing/valid
+        if(isMinValue(peakTestingValueValidCues,parseInt(dataSerialized["ResponsetimeMS"][i]))){
+          peakTestingValueValidCues = parseInt(dataSerialized["ResponsetimeMS"][i])
+        }
+      }
+
+      if(isValidCueAndGoodStatus(parseInt(dataSerialized["StatusOfAnswer"][i]), parseInt(dataSerialized["CueValidityAsNumber"][i]))){
+        // Testing
+        totalNumberTestingCorrectResponseAndValidCue+=1
+        totalResponeTimesTestingCorrectResponseAndValidCue+=parseInt(
+          dataSerialized["ResponsetimeMS"][i]
+        )
+      } else {
+        totalNumberTestingCorrectResponseAndInvalidCue+=1
+        totalResponeTimesTestingCorrectResponseAndInvalidCue+=parseInt(
+          dataSerialized["ResponsetimeMS"][i]
+        )
+      }
+    }
   }
 
-  console.log(sumCueResponseTimes)
-  console.log(sumInvalidCueResponseTimes)
+
 
   var finalData = {
-    "avgValidCueResponseTime": (sumCueResponseTimes / totalCues),
-    "avgInvalidCueResponseTime": (sumInvalidCueResponseTimes / totalInvalidCues),
-    "percentageMissedInvalidCues": (totalIncorrectOnInvalidCues / totalInvalidCues)
+    "avgValidCueResponseTimeTraining": (totalResponeTimesTrainingCorrectResponseAndValidCue / totalNumberTrainingCorrectResponseAndValidCue),
+    "avgValidCueResponseTimeTesting": (totalResponeTimesTestingCorrectResponseAndValidCue / totalNumberTestingCorrectResponseAndValidCue),
+    "avgInvalidCueResponseTimeTraining": (totalResponeTimesTrainingCorrectResponseAndInvalidCue / totalNumberTrainingCorrectResponseAndInvalidCue),
+    "avgInvalidCueResponseTimeTesting": (totalResponeTimesTestingCorrectResponseAndInvalidCue / totalNumberTestingCorrectResponseAndInvalidCue),
+    "totalInvalidCuesTesting": totalInvalidCuesTesting,
+    "totalInvalidCuesTraining":totalInvalidCuesTraining,
+    "percentageMissedInvalidCuesTraining": (incorrectResponseForUncuedTraining / totalInvalidCuesTraining),
+    "percentageMissedInvalidCuesTesting": (incorrectResponseForUncuedTesting/ totalInvalidCuesTesting),
+    "peakTestingValueValidCues": peakTestingValueValidCues,
+    "peakTestingValueInvalidCues": peakTestingValueInvalidCues,
+    "peakTrainingValueInvalidCues": peakTrainingValueInvalidCues,
+    "peakTrainingValueValidCues": peakTrainingValueValidCues
   }
 
 
-  var csv = "avgValidCueResponseTime, avgInvalidCueResponseTime, percentageMissedInvalidCues\n"
-  csv    += `${finalData["avgValidCueResponseTime"]},${finalData["avgInvalidCueResponseTime"]},${finalData["percentageMissedInvalidCues"]}` 
+  var csv = "avgValidCueResponseTimeTraining,avgValidCueResponseTimeTesting,avgInvalidCueResponseTimeTraining,avgInvalidCueResponseTimeTesting,totalInvalidCuesTesting,totalInvalidCuesTraining,percentageMissedInvalidCuesTraining,percentageMissedInvalidCuesTesting,peakTestingValueValidCues,peakTestingValueInvalidCues,peakTrainingValueInvalidCues,peakTrainingValueValidCues\n"
+  csv    += `${finalData["avgValidCueResponseTimeTraining"]},${finalData["avgValidCueResponseTimeTesting"]},${finalData["avgInvalidCueResponseTimeTraining"]},${finalData["avgInvalidCueResponseTimeTesting"]},${finalData["totalInvalidCuesTesting"]},${finalData["totalInvalidCuesTraining"]},${finalData["percentageMissedInvalidCuesTraining"]},${finalData["percentageMissedInvalidCuesTesting"]},${finalData["peakTestingValueValidCues"]},${finalData["peakTestingValueInvalidCues"]},${finalData["peakTrainingValueInvalidCues"]},${finalData["peakTrainingValueValidCues"]}` 
 
   downloadBlob(
       csv,
-      generateOutputFileName("PosnerStats"),
+      generateOutputFileName("PosnerCueStats"),
       'text/csv;charset=utf-8;'
   )
 
   return finalData
 }
 
-/** @Deprecated
-  * If a user responds to no-go, count towards % of no-goes 
-  * Remember JS is pass by reference for tables, s
-  * so we can pass original data table and modify it!
-*/
-// function goNoGoPercent(data, originalDataCollection, dataCategory) {
-//   console.log(`${dataCategory} -- Go no go custom stat!! -- ${data} -- ${JSON.stringify(originalDataCollection)}`)
-  
-//   // For no-gos, we want to track % of go vs no goes 
-//   if(dataCategory.substr(0,4) == 'nogo'){
-//     console.log("This is a no go trial")
-//     var keyToUse = `CUSTOM_${dataCategory}_NoGoPercentCalculator`
-
-//     if(keyToUse in originalDataCollection == false){
-//       originalDataCollection[keyToUse] = {
-//         "totalTrials" : 0,
-//         "totalMisses" : 0,
-//         "percentMisses":0
-//       }
-//     }
-
-//     originalDataCollection[keyToUse]["totalTrials"] += 1
-//     if(data == 1){
-//       originalDataCollection[keyToUse]["totalMisses"] += 1
-//     }
-
-//     originalDataCollection[keyToUse]["percentMisses"] = originalDataCollection[keyToUse]["totalMisses"] / originalDataCollection[keyToUse]["totalTrials"] 
-//   }
-//   console.log(originalDataCollection)
-//   return originalDataCollection
-// }
-
-// @Deprecated
-// Custom stats thats effectively a 'null' function. Does nothing 
-// Intended for stats we want to skip. Not sure if we'll need or not. 
-// function noOpSkipFunction(data, originalDataCollection, dataCategory){}
-
 /**
-  * Simple mapping for 'custom' statistics calculations.  
-  *
-  * @Deprecated
-*/ 
-// function customStatsLogic(experimentName) {
-//       var customLogicMapper = {
-//         "GoNoGo" : {},
-//         "PosnerCue" : {},
-//         "TaskSwitching" : {},
-//         "SimpleReaction" : {}
-//       }
+  * Calculates the average training and testing reaction times and outputs to a CSV 
+*/
+function calculateSimpleReactionTimeStats(data){
+  console.log("Simple reaction automated stats ")
+  var dataSerialized = serializeOutputDataToTable(data, "SimpleReaction")
 
-//       customLogicMapper["GoNoGo"]["ErrorStatus"] = (data, originalDataCollection, dataCategory) => goNoGoPercent(data, originalDataCollection, dataCategory)
+  // Get average training & testing reaction times 
+  var totalTrainingReactionTimes = 0
+  var totalTestingReactionTimes = 0 
+  var totalAcrossAllTrials = 0 
 
-//       return customLogicMapper[experimentName]
-// }
+  for(var i = 0; i < dataSerialized["ResponseTime"].length; i++){
+    if(dataSerialized["TestOrTrial"][i] == "dlsimple_training"){
+      totalTrainingReactionTimes += parseFloat(dataSerialized["ResponseTime"][i])
+    } else {
+      // assume test 
+      totalTestingReactionTimes += parseFloat(dataSerialized["ResponseTime"][i])
+    }
+    totalAcrossAllTrials += parseFloat(dataSerialized["ResponseTime"][i])
+  }
+
+  var finalData = {
+    "avgTrainingReactionTime": (totalTrainingReactionTimes / SimpleReactionTrain),
+    "avgTestingReactionTime": (totalTestingReactionTimes / SimpleReactionTest),
+    "avgReactionTimeAcrossAllTrials": (totalAcrossAllTrials / (SimpleReactionTrain + SimpleReactionTest))
+  }
+
+  console.log(finalData)
+
+
+  var csv = "avgTrainingReactionTime, avgTestingReactionTime, avgReactionTimeAcrossAllTrials\n"
+  csv    += `${finalData["avgTrainingReactionTime"]},${finalData["avgTestingReactionTime"]},${finalData["avgReactionTimeAcrossAllTrials"]}` 
+
+  console.log(csv)
+  
+  downloadBlob(
+      csv,
+      generateOutputFileName("SimpleReactionStats"),
+      'text/csv;charset=utf-8;'
+  )
+
+  return finalData
+}
 
 
 /**
@@ -631,125 +757,10 @@ function calculateAutomatedStats(experimentName, data){
     return calculateGoNoGo(data)
   } else if(experimentName == "PosnerCue"){
     return calculatePosnerCueStats(data)
+  } else if(experimentName == "SimpleReaction"){
+    return calculateSimpleReactionTimeStats(data)
   }
-
-  // @Deprecated 
-  // else{
-
-  //     var columnNameMapping = getExperimentToColumnNamesMap(experimentName)
-
-  //     var dataFormatted = data.split("\n")
-
-  //     var customStatisLogic = customStatsLogic(experimentName)
-
-  //     console.log(customStatsLogic)
-
-  //     // Stores the resultant data in a nice hash table :)
-  //     var dataToUse = {}
-
-  //     for(var i = 0; i < dataFormatted.length; i++){
-  //       // Grab the row
-  //       var splitUpRow = dataFormatted[i].replace(/\s{2,}/g, ' ').split(" ")
-
-  //       // Get the 'category' of data
-  //       var dataCategory = splitUpRow[0].replaceAll("\"", "")
-  //       if(dataCategory === ""){
-  //         console.log("Empty string/garbage data, skipping..");
-  //       } else {
-  //         for(var j = 1; j < columnNameMapping.length; j++){
-  //           var dataKey = `${dataCategory}_${columnNameMapping[j]}`
-  //           var dataToAddCastToInt = parseInt(splitUpRow[j])
-
-  //           if(columnNameMapping[j] in customStatisLogic == true){
-  //             console.log(`Custom stats logic handler: ${columnNameMapping[j]} -- ${dataToAddCastToInt}`)
-  //             dataToUse = customStatisLogic[columnNameMapping[j]](
-  //               dataToAddCastToInt,
-  //               dataToUse,
-  //               dataCategory
-  //             )
-  //           } else {
-
-  //             if(dataKey in dataToUse == false) {
-  //               console.log("Add entry to dataToUse table..")
-  //               dataToUse[dataKey] = {
-  //                 "mean" : 0,
-  //                 "peakVal": null,
-  //                 "minVal" : null,
-  //                 "totalEntries" : 0
-  //               }
-  //             }
-
-  //             // Actual mean is calculated later. This is just to store the total.
-  //             dataToUse[dataKey]["mean"] += dataToAddCastToInt
-  //             dataToUse[dataKey]["totalEntries"] += 1
-
-  //             if(dataToUse[dataKey]["peakVal"] == null ||
-  //               dataToUse[dataKey]["peakVal"] < dataToAddCastToInt){
-  //               dataToUse[dataKey]["peakVal"] = dataToAddCastToInt
-  //             }
-
-  //             if(dataToUse[dataKey]["minVal"] == null ||
-  //               dataToUse[dataKey]["minVal"] > dataToAddCastToInt){
-  //               dataToUse[dataKey]["minVal"] = dataToAddCastToInt
-  //             }
-  //           }
-
-  //         }
-  //       }
-  //     }
-
-  //     // Actually calculate the means
-  //     for (const key of Object.keys(dataToUse)) {
-  //       if("mean" in dataToUse[key]){
-  //         // dataToUse[key]["originalMean"] = dataToUse[key]["mean"]
-  //         dataToUse[key]["mean"] = (dataToUse[key]["mean"] / dataToUse[key]["totalEntries"])
-  //       }
-  //     }
-  //     return dataToUse
-  // }
 }
-
-/** @Deprecated 
-  * Take data from 'calculateAutomatedStats' and format into a CSV. 
-  * Afterwards push to client for download
-  *
-*/
-// function createAutomatedStatsCSV(statsData, experimentName) {
-
-
-//   var csv = [
-//     "",
-//     ""
-//   ]
-
-//   var statsCsvName = `${experimentName}_stats`
-
-//   // Bad this is hardcoded but o well.. 
-//   // CSVs[normalStatsKey] = "mean, minVal, peakVal, totalEntries\n"
-
-//   for (const key of Object.keys(statsData)) {
-//     // csv[0] += (Object.keys(statsData[key]).join(",") + "\n")
-//     var keysToAdd = ""
-//     var valsToAdd = ""
-//     for(const dataKey of Object.keys(statsData[key])){
-//       keysToAdd += `${key}_${dataKey},`
-//       valsToAdd += `${statsData[key][dataKey]},`
-//     }
-
-//     csv[0] += keysToAdd
-//     csv[1] += valsToAdd
-//   }
-
-//   console.log(csv)
-  
-//   var finalCsv = (csv[0] + "\n" + csv[1])
-
-//   downloadBlob(
-//     finalCsv, 
-//     generateOutputFileName(statsCsvName), 
-//     'text/csv;charset=utf-8;'
-//   )  
-// }
 
 /*
  * Add collumn identifiers based on experiment name 
@@ -771,6 +782,13 @@ function addVersion(version) {
   document.getElementsByTagName("title")[0].innerText = `v${version}; CSUMB SSB Study`
 }
 
+
+/**
+  * Simple helper method to determine if this is a demo site or not 
+**/
+function isDemo(){
+  return isDemoSite
+}
 /**
   * Injects a custom welcome image :)
   *
@@ -790,6 +808,34 @@ function loadWelcomeImageBitMap(){
 
 }
 
+function reactionTimeDemoReport(data, experimentName){
+  var dataSerialized = serializeOutputDataToTable(data, experimentName)
+  console.log(dataSerialized)
+  var totalTrials = dataSerialized["ResponseTime"].length
+  var totalTime = 0
+  for(var i = 0; i < dataSerialized["ResponseTime"].length; i++){
+    totalTime += parseFloat(dataSerialized["ResponseTime"][i])
+  }
+
+  var meanResponseTime = totalTime / totalTrials
+
+  var endUserMessage = `Thank you! You had an average response time of ${meanResponseTime.toString()} milliseconds`
+  alert(endUserMessage)
+}
+
+function demoReportingRoutine(experimentName){
+  console.log("Demo reporting routine")
+  if(experimentName == "SimpleReaction"){
+    reactionTimeDemoReport(outputdata, experimentName)
+
+    // Hide the experiment window 
+    document.getElementsByTagName("center")[0].style.display = "none"
+
+    // Show the informational section
+    document.getElementById("demoQR").style.display=""
+  }
+}
+
 /**
   * Entry point for the custom data retrieval function. 
   * Basically it bootstraps on top of the existing 'showdata_html' event, 
@@ -804,23 +850,24 @@ function initCustomDataLoader(experimentName){
 
     // Bootstrap listener on top of the 'showdata_html' psytoolkit javascript method. 
     showdata_html = function() {
-        originalShowDataHtml();
+        if(!isDemo()){
+          originalShowDataHtml();
 
-        // Take output data and create the CSV for download 
-        outputDataToCSV(
-          addCollumnsToOutputData(EXPERIMENT_NAME, outputdata), 
-          EXPERIMENT_NAME
-        );
+          // Take output data and create the CSV for download 
+          outputDataToCSV(
+            addCollumnsToOutputData(EXPERIMENT_NAME, outputdata), 
+            EXPERIMENT_NAME
+          );
 
-        // Stash the stats. Pass on to another function for creating the CSVs 
-        var automatedStats = calculateAutomatedStats(
-          EXPERIMENT_NAME,
-          outputdata
-        );
-        // @Deprecated 
-        // if(EXPERIMENT_NAME != "TaskSwitching"){
-        //     createAutomatedStatsCSV(automatedStats, EXPERIMENT_NAME);
-        // }
+          // Stash the stats. Pass on to another function for creating the CSVs 
+          var automatedStats = calculateAutomatedStats(
+            EXPERIMENT_NAME,
+            outputdata
+          );
+        } else {
+          // DEMO CODE BLOCK 
+          demoReportingRoutine(experimentName)
+        }
     }
 }
 
