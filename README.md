@@ -19,6 +19,9 @@ Japanese:
 
 * [Reaction times](https://xxdunedainxx.github.io/CSUMB_SSBU_Study/site/SimpleReactionOnlyJapanese.html)
 * [Go no go](https://xxdunedainxx.github.io/CSUMB_SSBU_Study/site/GoNoGoJapanese.html)
+* [Posner Queues](https://xxdunedainxx.github.io/CSUMB_SSBU_Study/site/PosnerCueTaskJapanese.html)
+* [TaskSwitching](https://xxdunedainxx.github.io/CSUMB_SSBU_Study/site/TaskSwitchingJapanese.html)
+
 
 ## Contact
 
