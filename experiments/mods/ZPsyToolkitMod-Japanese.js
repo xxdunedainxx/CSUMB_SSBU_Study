@@ -18,10 +18,11 @@
     - Go/No-go automated status enhancement. Deprecate old automated stats method 
   * Update: February 8th, 2025 - Posner Stats 
   * Update: August 1st, 2025 - Japanese Translations (specifically the otter)
+  * Update: August 5th, 2025 - Add toggle to disable automated stats output 
 */ 
 
 // Semantic versioning for the app 
-VERSION="1.0.7"
+VERSION="1.0.10"
 
 // Store global vars 
 var GLOBAL_VARIABLE_STASH = {}
@@ -34,6 +35,9 @@ var SimpleReactionTest = 20
 var GoTrials = 20
 var NoGoTrials = 5 
 var isDemoSite = false 
+
+// Flag to turn automated stats on/off
+var USE_AUTOMATED_STATS = false
 
 /*
  * Simple utility function for downloading a document of a particular content type.
@@ -226,6 +230,7 @@ function parseHttpArgs(experimentName){
 function initGlobalVariableStash(experimentName){
     console.log("Global variables stash init")
     if(experimentName == "PosnerCue"){
+      console.log("Posner trials is 13 for posner")
       TOTAL_TRIALS_VAR = 13 // 13 for posner 
     }
     parseHttpArgs(experimentName)
@@ -843,11 +848,16 @@ function initCustomDataLoader(experimentName){
             EXPERIMENT_NAME
           );
 
-          // Stash the stats. Pass on to another function for creating the CSVs 
-          var automatedStats = calculateAutomatedStats(
-            EXPERIMENT_NAME,
-            outputdata
-          );
+          if(USE_AUTOMATED_STATS){
+            console.log("Running automated stats")
+            // Stash the stats. Pass on to another function for creating the CSVs 
+            var automatedStats = calculateAutomatedStats(
+              EXPERIMENT_NAME,
+              outputdata
+            );
+          } else {
+            console.log("AUTOMATED STATS DISABLED!! SKIPPING")
+          }
         } else {
           // DEMO CODE BLOCK 
           demoReportingRoutine(experimentName)

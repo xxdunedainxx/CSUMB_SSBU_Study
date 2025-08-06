@@ -2,7 +2,7 @@
 <html><head><META CHARSET='UTF-8'><title>PsyToolkit run experiment</title>
 </head>
 <script>
-/**
+	/**
   * Author: Zach McFadden
   * Date: July 8, 2024
   * Simple utility script written on top of the compiled psytoolkit HTML experiments
@@ -22,10 +22,11 @@
     - Go/No-go automated status enhancement. Deprecate old automated stats method 
   * Update: February 8th, 2025 - Posner Stats 
   * Update: August 1st, 2025 - Japanese Translations (specifically the otter)
+  * Update: August 5th, 2025 - Add toggle to disable automated stats output 
 */ 
 
 // Semantic versioning for the app 
-VERSION="1.0.7"
+VERSION="1.0.10"
 
 // Store global vars 
 var GLOBAL_VARIABLE_STASH = {}
@@ -38,6 +39,9 @@ var SimpleReactionTest = 20
 var GoTrials = 20
 var NoGoTrials = 5 
 var isDemoSite = false 
+
+// Flag to turn automated stats on/off
+var USE_AUTOMATED_STATS = false
 
 /*
  * Simple utility function for downloading a document of a particular content type.
@@ -230,6 +234,7 @@ function parseHttpArgs(experimentName){
 function initGlobalVariableStash(experimentName){
     console.log("Global variables stash init")
     if(experimentName == "PosnerCue"){
+      console.log("Posner trials is 13 for posner")
       TOTAL_TRIALS_VAR = 13 // 13 for posner 
     }
     parseHttpArgs(experimentName)
@@ -847,11 +852,16 @@ function initCustomDataLoader(experimentName){
             EXPERIMENT_NAME
           );
 
-          // Stash the stats. Pass on to another function for creating the CSVs 
-          var automatedStats = calculateAutomatedStats(
-            EXPERIMENT_NAME,
-            outputdata
-          );
+          if(USE_AUTOMATED_STATS){
+            console.log("Running automated stats")
+            // Stash the stats. Pass on to another function for creating the CSVs 
+            var automatedStats = calculateAutomatedStats(
+              EXPERIMENT_NAME,
+              outputdata
+            );
+          } else {
+            console.log("AUTOMATED STATS DISABLED!! SKIPPING")
+          }
         } else {
           // DEMO CODE BLOCK 
           demoReportingRoutine(experimentName)
@@ -879,7 +889,7 @@ function loadZehPlugin(experimentName) {
   // Add our custom data loader callback 
   initCustomDataLoader(experimentName);
 }
-</script> 
+</script>
 <body onload="whenloaded()">
 <script>
 function tmpmouse(e){MouseX=(e.clientX-psy_canvas.getBoundingClientRect().left)*800/psy_canvas.getBoundingClientRect().width;MouseY=(e.clientY-psy_canvas.getBoundingClientRect().top)*600/psy_canvas.getBoundingClientRect().height; if(MouseX>175 && MouseX<625 && MouseY>125 && MouseY<475){window.removeEventListener('mousedown', tmpmouse, false);main();}}
@@ -1087,16 +1097,16 @@ block_cueingBlockTraining.trial_counter<=block_cueingBlockTraining.max_trials_in
 block_cueingBlockTraining.trial_counter>=block_cueingBlockTraining.max_trials_in_block||1==tasklist_end_request||1==experiment_end_request)tasklist_end_request=block_cueingBlockTraining.criteria_fullfilled=0;1==block_cueingBlockTraining.criteria_fullfilled&&(block_cueingBlockTraining.step-=2);setTimeout("block_cueingBlockTraining.run()",0);break;case 7:block_cueingBlockTraining.step++;psy_clear_screen_db();psy_clear_stimulus_counters_db();psy_add_centered_bitmap_db(afterwords,PSY_CENTRAL,PSY_CENTRAL);
 psy_draw_all_db();psy_wait(0,32);break;case 8:block_cueingBlockTraining.step++;psy_clear_screen_db();block_cueingBlockTraining.run();break;case 9:block_cueingBlockTraining.step++;datalines=outputdata.split("\n");var a=0,b=0,c=987654321,d=-987654321;for(tmpx=0;tmpx<datalines.length-1;tmpx++)datalinenumbers=datalines[tmpx].split(/ +/),1==parseInt(datalinenumbers[7])&1==parseInt(datalinenumbers[5])&&(parseInt(datalinenumbers[6]),b+=parseInt(datalinenumbers[6]),parseInt(datalinenumbers[6])<c&&(c=parseInt(datalinenumbers[6])),
 parseInt(datalinenumbers[6])>d&&(d=parseInt(datalinenumbers[6])),a++);RTvalid=0<a?Math.round(b/a):0;datalines=outputdata.split("\n");b=a=0;c=987654321;d=-987654321;for(tmpx=0;tmpx<datalines.length-1;tmpx++)datalinenumbers=datalines[tmpx].split(/ +/),1==parseInt(datalinenumbers[7])&0==parseInt(datalinenumbers[5])&&(parseInt(datalinenumbers[6]),b+=parseInt(datalinenumbers[6]),parseInt(datalinenumbers[6])<c&&(c=parseInt(datalinenumbers[6])),parseInt(datalinenumbers[6])>d&&(d=parseInt(datalinenumbers[6])),
-a++);RTinvalid=0<a?Math.round(b/a):0;psy_add_text_rgb_db(1,-300,0,PSY_CENTRAL,PSY_CENTRAL,255,255,255,"Response time (ms)",1);psy_draw_all_db();tmptext="Valid cue conditions:    "+RTvalid+" ms";psy_add_text_rgb_db(1,-300,50,PSY_CENTRAL,PSY_CENTRAL,255,255,255,tmptext,1);psy_draw_all_db();tmptext="Invalid cue conditions:  "+RTinvalid+" ms";psy_add_text_rgb_db(1,-300,100,PSY_CENTRAL,PSY_CENTRAL,255,255,255,tmptext,1);psy_draw_all_db();psy_add_text_rgb_db(1,-300,250,PSY_CENTRAL,PSY_CENTRAL,255,255,255,
-"Press space bar to continue",1);psy_draw_all_db();psy_wait(0,32);break;case 10:block_cueingBlockTraining.step++,psy_clear_screen_db(),setTimeout("blocks"+psy_blockorder+".run()",0)}}},block_messagenumber1={blockname:"block_messagenumber1",step:1,trial_counter:0,start:function(){block_messagenumber1.step=1;current_block="block_messagenumber1";psy_clear_stimulus_counters_db();block_messagenumber1.run()},run:function(){current_block=block_messagenumber1.blockname;switch(block_messagenumber1.step){case 1:block_messagenumber1.step++;
-psy_wait(GeneralPreTestMesssage,32);break;case 2:block_messagenumber1.step++;psy_clear_screen_db();block_messagenumber1.run();break;case 3:block_messagenumber1.step++,setTimeout("blocks"+psy_blockorder+".run()",0)}}},block_cueingBlockTesting={blockname:"block_cueingBlockTesting",step:1,trial_counter:0,trial_counter_per_task:100,max_trials_in_block:999999,criteria_fullfilled:1,choosetask:0,roe:[!1],trials:[],current_trial:0,start:function(){block_cueingBlockTesting.step=1;current_block="block_cueingBlockTesting";
-this.trials=Array(getTotalTrials("PosnerCue")).fill([].concat($jscomp.arrayFromIterable(Array(8).keys())).map(function(a){return++a})).flat();this.trials=psy_array_shuffle(this.trials);this.trials=this.trials.slice(0,100);psy_clear_stimulus_counters_db();block_cueingBlockTesting.run()},run:function(){current_block=block_cueingBlockTesting.blockname;switch(block_cueingBlockTesting.step){case 1:block_cueingBlockTesting.step++;psy_clear_screen_db();block_cueingBlockTesting.max_trials_in_block=999999;block_cueingBlockTesting.criteria_fullfilled=
-1;0<block_cueingBlockTesting.criteria_fullfilled&&block_cueingBlockTesting.trial_counter<=block_cueingBlockTesting.max_trials_in_block?(block_cueingBlockTesting.trial_counter++,this.current_trial=this.trials.shift(),task_cueingtask.start(this.current_trial)):setTimeout("block_cueingBlockTesting.run()",0);break;case 2:block_cueingBlockTesting.step++;block_cueingBlockTesting.trial_counter_per_task--;0<error_status&&0<this.trials.length&&this.roe[0]&&(this.trials.unshift(this.current_trial),this.trials.pop());
-if(0==block_cueingBlockTesting.trials.length||block_cueingBlockTesting.trial_counter>=block_cueingBlockTesting.max_trials_in_block||1==tasklist_end_request||1==experiment_end_request)tasklist_end_request=block_cueingBlockTesting.criteria_fullfilled=0;1==block_cueingBlockTesting.criteria_fullfilled&&(block_cueingBlockTesting.step-=2);setTimeout("block_cueingBlockTesting.run()",0);break;case 3:block_cueingBlockTesting.step++;psy_clear_screen_db();psy_clear_stimulus_counters_db();psy_add_centered_bitmap_db(afterwords,
-PSY_CENTRAL,PSY_CENTRAL);psy_draw_all_db();psy_wait(0,32);break;case 4:block_cueingBlockTesting.step++;psy_clear_screen_db();block_cueingBlockTesting.run();break;case 5:block_cueingBlockTesting.step++;datalines=outputdata.split("\n");var a=0,b=0,c=987654321,d=-987654321;for(tmpx=0;tmpx<datalines.length-1;tmpx++)datalinenumbers=datalines[tmpx].split(/ +/),1==parseInt(datalinenumbers[7])&1==parseInt(datalinenumbers[5])&&(parseInt(datalinenumbers[6]),b+=parseInt(datalinenumbers[6]),parseInt(datalinenumbers[6])<
-c&&(c=parseInt(datalinenumbers[6])),parseInt(datalinenumbers[6])>d&&(d=parseInt(datalinenumbers[6])),a++);RTvalid=0<a?Math.round(b/a):0;datalines=outputdata.split("\n");b=a=0;c=987654321;d=-987654321;for(tmpx=0;tmpx<datalines.length-1;tmpx++)datalinenumbers=datalines[tmpx].split(/ +/),1==parseInt(datalinenumbers[7])&0==parseInt(datalinenumbers[5])&&(parseInt(datalinenumbers[6]),b+=parseInt(datalinenumbers[6]),parseInt(datalinenumbers[6])<c&&(c=parseInt(datalinenumbers[6])),parseInt(datalinenumbers[6])>
-d&&(d=parseInt(datalinenumbers[6])),a++);RTinvalid=0<a?Math.round(b/a):0;psy_add_text_rgb_db(1,-300,0,PSY_CENTRAL,PSY_CENTRAL,255,255,255,"Response time (ms)",1);psy_draw_all_db();tmptext="Valid cue conditions:    "+RTvalid+" ms";psy_add_text_rgb_db(1,-300,50,PSY_CENTRAL,PSY_CENTRAL,255,255,255,tmptext,1);psy_draw_all_db();tmptext="Invalid cue conditions:  "+RTinvalid+" ms";psy_add_text_rgb_db(1,-300,100,PSY_CENTRAL,PSY_CENTRAL,255,255,255,tmptext,1);psy_draw_all_db();psy_add_text_rgb_db(1,-300,250,
-PSY_CENTRAL,PSY_CENTRAL,255,255,255,"Press space bar to continue",1);psy_draw_all_db();psy_wait(0,32);break;case 6:block_cueingBlockTesting.step++,psy_clear_screen_db(),setTimeout("blocks"+psy_blockorder+".run()",0)}}},xhrcounter=0;
+a++);RTinvalid=0<a?Math.round(b/a):0;psy_add_text_rgb_db(1,-300,0,PSY_CENTRAL,PSY_CENTRAL,255,255,255,"\u53cd\u5fdc\u6642\u9593 (ms)",1);psy_draw_all_db();tmptext="\u53cd\u5fdc\u6642\u9593:    "+RTvalid+" ms";psy_add_text_rgb_db(1,-300,50,PSY_CENTRAL,PSY_CENTRAL,255,255,255,tmptext,1);psy_draw_all_db();tmptext="\u7121\u52b9\u306a\u624b\u304c\u304b\u308a\u6761\u4ef6\uff1a  "+RTinvalid+" ms";psy_add_text_rgb_db(1,-300,100,PSY_CENTRAL,PSY_CENTRAL,255,255,255,tmptext,1);psy_draw_all_db();psy_add_text_rgb_db(1,
+-300,250,PSY_CENTRAL,PSY_CENTRAL,255,255,255,"\u7d9a\u884c\u3059\u308b\u306b\u306f\u30b9\u30da\u30fc\u30b9\u30ad\u30fc\u3092\u62bc\u3057\u3066\u304f\u3060\u3055\u3044",1);psy_draw_all_db();psy_wait(0,32);break;case 10:block_cueingBlockTraining.step++,psy_clear_screen_db(),setTimeout("blocks"+psy_blockorder+".run()",0)}}},block_messagenumber1={blockname:"block_messagenumber1",step:1,trial_counter:0,start:function(){block_messagenumber1.step=1;current_block="block_messagenumber1";psy_clear_stimulus_counters_db();
+block_messagenumber1.run()},run:function(){current_block=block_messagenumber1.blockname;switch(block_messagenumber1.step){case 1:block_messagenumber1.step++;psy_wait(GeneralPreTestMesssage,32);break;case 2:block_messagenumber1.step++;psy_clear_screen_db();block_messagenumber1.run();break;case 3:block_messagenumber1.step++,setTimeout("blocks"+psy_blockorder+".run()",0)}}},block_cueingBlockTesting={blockname:"block_cueingBlockTesting",step:1,trial_counter:0,trial_counter_per_task:100,max_trials_in_block:999999,
+criteria_fullfilled:1,choosetask:0,roe:[!1],trials:[],current_trial:0,start:function(){block_cueingBlockTesting.step=1;current_block="block_cueingBlockTesting";this.trials=Array(getTotalTrials("PosnerCue")).fill([].concat($jscomp.arrayFromIterable(Array(8).keys())).map(function(a){return++a})).flat();this.trials=psy_array_shuffle(this.trials);this.trials=this.trials.slice(0,100);psy_clear_stimulus_counters_db();block_cueingBlockTesting.run()},run:function(){current_block=block_cueingBlockTesting.blockname;switch(block_cueingBlockTesting.step){case 1:block_cueingBlockTesting.step++;
+psy_clear_screen_db();block_cueingBlockTesting.max_trials_in_block=999999;block_cueingBlockTesting.criteria_fullfilled=1;0<block_cueingBlockTesting.criteria_fullfilled&&block_cueingBlockTesting.trial_counter<=block_cueingBlockTesting.max_trials_in_block?(block_cueingBlockTesting.trial_counter++,this.current_trial=this.trials.shift(),task_cueingtask.start(this.current_trial)):setTimeout("block_cueingBlockTesting.run()",0);break;case 2:block_cueingBlockTesting.step++;block_cueingBlockTesting.trial_counter_per_task--;
+0<error_status&&0<this.trials.length&&this.roe[0]&&(this.trials.unshift(this.current_trial),this.trials.pop());if(0==block_cueingBlockTesting.trials.length||block_cueingBlockTesting.trial_counter>=block_cueingBlockTesting.max_trials_in_block||1==tasklist_end_request||1==experiment_end_request)tasklist_end_request=block_cueingBlockTesting.criteria_fullfilled=0;1==block_cueingBlockTesting.criteria_fullfilled&&(block_cueingBlockTesting.step-=2);setTimeout("block_cueingBlockTesting.run()",0);break;case 3:block_cueingBlockTesting.step++;
+psy_clear_screen_db();psy_clear_stimulus_counters_db();psy_add_centered_bitmap_db(afterwords,PSY_CENTRAL,PSY_CENTRAL);psy_draw_all_db();psy_wait(0,32);break;case 4:block_cueingBlockTesting.step++;psy_clear_screen_db();block_cueingBlockTesting.run();break;case 5:block_cueingBlockTesting.step++;datalines=outputdata.split("\n");var a=0,b=0,c=987654321,d=-987654321;for(tmpx=0;tmpx<datalines.length-1;tmpx++)datalinenumbers=datalines[tmpx].split(/ +/),1==parseInt(datalinenumbers[7])&1==parseInt(datalinenumbers[5])&&
+(parseInt(datalinenumbers[6]),b+=parseInt(datalinenumbers[6]),parseInt(datalinenumbers[6])<c&&(c=parseInt(datalinenumbers[6])),parseInt(datalinenumbers[6])>d&&(d=parseInt(datalinenumbers[6])),a++);RTvalid=0<a?Math.round(b/a):0;datalines=outputdata.split("\n");b=a=0;c=987654321;d=-987654321;for(tmpx=0;tmpx<datalines.length-1;tmpx++)datalinenumbers=datalines[tmpx].split(/ +/),1==parseInt(datalinenumbers[7])&0==parseInt(datalinenumbers[5])&&(parseInt(datalinenumbers[6]),b+=parseInt(datalinenumbers[6]),
+parseInt(datalinenumbers[6])<c&&(c=parseInt(datalinenumbers[6])),parseInt(datalinenumbers[6])>d&&(d=parseInt(datalinenumbers[6])),a++);RTinvalid=0<a?Math.round(b/a):0;psy_add_text_rgb_db(1,-300,0,PSY_CENTRAL,PSY_CENTRAL,255,255,255,"\u53cd\u5fdc\u6642\u9593 (ms)",1);psy_draw_all_db();tmptext="\u53cd\u5fdc\u6642\u9593:    "+RTvalid+" ms";psy_add_text_rgb_db(1,-300,50,PSY_CENTRAL,PSY_CENTRAL,255,255,255,tmptext,1);psy_draw_all_db();tmptext="\u7121\u52b9\u306a\u624b\u304c\u304b\u308a\u6761\u4ef6:  "+
+RTinvalid+" ms";psy_add_text_rgb_db(1,-300,100,PSY_CENTRAL,PSY_CENTRAL,255,255,255,tmptext,1);psy_draw_all_db();psy_add_text_rgb_db(1,-300,250,PSY_CENTRAL,PSY_CENTRAL,255,255,255,"\u7d9a\u884c\u3059\u308b\u306b\u306f\u30b9\u30da\u30fc\u30b9\u30ad\u30fc\u3092\u62bc\u3057\u3066\u304f\u3060\u3055\u3044",1);psy_draw_all_db();psy_wait(0,32);break;case 6:block_cueingBlockTesting.step++,psy_clear_screen_db(),setTimeout("blocks"+psy_blockorder+".run()",0)}}},xhrcounter=0;
 function main(){psy_screen_height=600;psy_screen_width=800;psy_screen_center_x=psy_screen_width/2;psy_screen_center_y=psy_screen_height/2;psy_frame_w=800;psy_frame_h=600;psy_screen_scale(0,!1);psy_canvas.focus();psy_bgcol_b=psy_bgcol_g=psy_bgcol_r=0;psy_set_coordinate_system("c");psy_exp_start_time=psy_exp_current_time=(new Date).getTime();psy_mouse_visibility(0);psy_load_font("Arial",20);psy_load_bitmap("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACYAAAArCAYAAAAUo/pwAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAN1wAADdcBQiibeAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAMXSURBVFiF7ZhLSJRRGIaf8Z7XLFRMSdIKwjK6WFituphaKjWZEoSLipCCNkFCgUVXiFqURO2KzEtpaCJuyjQVgjKo1JAEU0FLrdTU1FGnxVFnjuPo/P+ozWLe1fCe75zzcM53vv9jNIAeG5TD/wYwJzuYUtnBlMoOplQ2C+ZkbmDxCgiIkL1RHTSWoqok+68F3zDZG+yG5gqFYP0dsOM8BG6U/eob8PqCMqiACEitABcvgzemg5x95ueYvUpdP+QlQE+z7G9Phw3HLYfyCoKUYhkKoCQNmspUgAH0fYeceHHkxorNhLDo2aFcvASUV5DsV12Fjw9nnjtr8nfVQ/4hcfSTk5xAmwf+62ZYeDxmap7WZkN5xmy7Wvgqv5VD8QnZM3caE5ruVFsqodjCNLC4XHzOgopLsucdPH3+bDtnmoc/G+CZFkaH5xgMoPKyaW4ERIA2V1wdQHgy7Lwixwx0Qm48/P1l+V6OwEUlcI2lEBwFvqEGb8lK8AgQjyQp3wAJMDII2XHQUatkF9Cgoly6ekPqG1E0jTU6BI6uRoYeClLgS4HSHVR+koZ6xdX8aZN9CQp4ma4OSjUYQG+rgBvum3685gG8vaV2dSs/4iODcn2bkH4Mau5bs7IVYO5+olS4+ZqOaRwguVA8iAUFc3ITGxu/zKnyCYHkInB2XygwDSQ+gqCtsv21BBqKZG/ZZjiQJU5w3sF2XYc1Wtlr/wDPj0DhUWh7L4+tToA9N+cZbNNJiDorez0tkJco2iTdgPg9tVXacgYiT88TWFgMxNyRvaEeUTL62g1e/w/RKg31yLHRt2HV/jkGm/geahwN3pgO8g9DZ51pfFc95CfJpUTjAAefmHbEqsEmO1BP2S9Jg6ZX5uc1lYkYYzl7iJfqs9xKMGs6UBAxVddkzzNQrOnqrRJM4yiuT20HOqHyDKjLlT2/cNA+lbsQi8Fi70LYXtlT0oFOSg8vjkFrtWyH7oa4e+anTdv2+ITA+tQp6+vhXSYM/lYINq5FSyHylKn/6TF0N1kIZguy2b8I7GBKZQdTKjuYUtks2D/8p9qITWog8wAAAABJRU5ErkJggg==");
 psy_load_bitmap("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADMAAAA2CAYAAABqbKGZAAAFHElEQVRoge2afUxVZRzHP4iJBmbIsiyX+QLUWtGLVkqhyzKd6VJmlq3FJmkvRKWbtvVGb3/olpVZi8qitdBqQgPJtbQZRjTfGtUqXqRsTMuGRmAQvrUvj/fecy73nvsCl3tHfjd2nnt4nvP7fs/5Pb/n9/zOiQNO0k8woL8I4bSYGMbA3qaWkg4pqZA0EoaONMchw6H9ELQdgNYD5thcD821vWu7x2IGDoaLpkLqLEibBWePCX7sX79AXQXUV8Cv2+BYR8+4hB3NhqRA5nKY+AAMSuoZCaGzDXa+DlWroL05vGuELCZhGExaCpMehUFDwzPqhM5WqH4JqlfDvy2hjQ1JTNpsuK3IzIFIQ3PskxyoK+9lMXEDYGoBZD1xakRf4SRUPg/bCuDkiV4QMzgZsj+A8TP7UIQXGjbDxrug47BzP0cxZ5wJOV/C+RMiyjUo7N8FRVPg6D/+e/sVI9d66ngU2ftAbRl8ONe/y/nNAGa80mccg0b6HGdePsVk3APX5NnPdR6B37+LhgQ7xEv8fKGbGK0dN6/s3rNyJRRmQFmeEdbXkM1d68xR/Hytcd3SmazHIfFc+zldpOo5GHUjzNCFEs15Cfvzp9BULdoa+l1oOwibHobaDdCwBaa/YHhuecxBTPJYuO4Re4fvP4aKXBiaBgvWe4QIEtL0RejkQsGhRiiaCa11kH4HzHvbcBDP3W/C4UbPxWzR7NY34Oolnn9+tRq2LjNCFm+HpBGRJe4Nq5DMJyFrhf1m7i6ETfd5frvnjELxxXNNW34pF4oVIdNehJuetQsRxDfOMuvdzQtvgMRThDXZv33NzBGrEInU0zrUSEThLeT6pb6tia94uxAPFKg9eRlccK05O+JS6GiH7HdgSLKnc/Va87SOHocxUyB+UO9LsgqZ9xFMzHXuryxb6Q7WOZPfAMnjnI28Oi6yblf/GZTne4RcNj/wmMN7Yc140+5yM/ndsNH+B8i9Su817dlrIiNEUbN4hmnnVAUnRBBv17zpCs1aVwY4bKB3FJoQfOWDkHqLObduWvhh+WmvbFBPpOR289RzNsPwscFfS7zFX3WFLglnjfLfWYY0T4SMhZ7z51wS2JBLrAKJEypXmX9mvxuaEBfEP6CYfV97Hr0werKnPWdtYCPPnNrIBVr1W5rMMSHMWoL479/pkDVLSFFmeBcPFVnLzYDi+cZuuOgS83eTfbhcyyVEkzGQm/QUExaZ9URRTHYVDEKBi79PMSreaTIuqbG7ViShhVHhWFAw0OIcLGxijvwBJ455Rp53OeTtMce+hMLxQ3vNjVTQ2XBn4O2GeIu/W4y2oS377J2886C+gqKZwrNcWyl/Sa6zIPF2baPdAaD+0+iQ9wUJurvMpPwStPYq//mglbdbzI8bo8DaAfIM7V0kqCswzPQtyMrbLea37XDkYHQFeCOQIPEVbxfcYuR3P5dGl7wvOAkSX2vZyZaRqQJ/RQ7EJ4RuVHWCmmLPb9eqrsjUW4JKMHNIgu6vNnytsGUA2k9/83J4BpWrKRdz/Qm6mwtDXAD9wfqEFO32vGXf/+OroqkSTn599wpNLEHryppUszGzoltupg6fr4hdIYL4eQvBX0Wz5j3YEURWHA2Il/j5gmPhfEGpqe/GCgIVzvvVKw3H7wA08P3pnupHtCD74uEkBGupyR/0OvuH9cbtRmdF5zVg+WI41h64+//vBa0V/ebVuRX94qMGb/SLz038IZofAp3+EjBWcVpMTAL4D/dy5ogmbaRRAAAAAElFTkSuQmCC");
 psy_load_bitmap("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACYAAAArCAYAAAAUo/pwAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAN1wAADdcBQiibeAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAC/SURBVFiF7dWxCYRAFEXR67qBFVjH1GQVGhhZwoSC5RlYgdlsBavz4MMK+w6Yfb4XB8YGKDzQ69cB3zhM5TCVw1QOUzlMFRaWcybnHLWOhqCf+HmeAHRdF7HuD44ymsNUDlO9a4b6vmcYhsuZtm0BGMfxcm7bNo7jqIord09KqURJKd2+DyhVX2zfd6ZpupxZlgWAeZ5vd9Xwza9ymMphqseGVd1jNdZ1jVoFBN5j0R57lA5TOUzlMJXDVA5TfQBTR32aAsxGXAAAAABJRU5ErkJggg==");psy_load_bitmap("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACYAAAArCAYAAAAUo/pwAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAN1wAADdcBQiibeAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAADNSURBVFiF7ZdBCsMgEEV/SiGChBwsR8hFvFCOkIMFEZKVXSfFTn8l1MV/4MbR4cGIox2AjAZ5/FughMRYJMYiMRaJsTxrE3jvMQzDaS7GiJRSbWrkmhFCyFdCCFU5AeRmSykxFomxSIylg/G0XpYF0zQV433fwzl3mtv3HcdxFPes64p5nj+KmTe/9x7jOFrLTjjn3mSvOS2aLWWzYmYpU0rYtq0Y/+WMfdvg1cQZJMYiMRaJsZhN3OKuX1K12F00W0qJsUiMRWIsEmN5AWt3lL1B4sZLAAAAAElFTkSuQmCC");
