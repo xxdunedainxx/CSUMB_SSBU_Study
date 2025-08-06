@@ -22,6 +22,7 @@ Japanese:
 * [Posner Queues](https://xxdunedainxx.github.io/CSUMB_SSBU_Study/site/PosnerCueTaskJapanese.html)
 * [TaskSwitching](https://xxdunedainxx.github.io/CSUMB_SSBU_Study/site/TaskSwitchingJapanese.html)
 
+**Thank you to Caleb Robbins for assisting with the Japanese translations!!!**
 
 ## Contact
 
