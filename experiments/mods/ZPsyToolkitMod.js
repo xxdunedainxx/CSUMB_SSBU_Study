@@ -62,6 +62,7 @@ function downloadBlob(content, filename, contentType) {
  * Sends an output message to parent window (if this embedded in an iframe)
 */
 function sendOutputDataToParent(data){
+  console.log("sendOutputDataToParent")
   // send data to parent
   window.parent.postMessage({
     type: "PSYTOOLKIT_RESULT",
@@ -74,7 +75,8 @@ function sendOutputDataToParent(data){
  * Used as a health check by sites that reference this application as an iframe 
 */
 function sendPingToParent(){
-  // send data to parent
+  // send ping to parent
+  console.log("sendPingToParent")
   window.parent.postMessage({
     type: "PSYTOOLKIT_PING",
     payload: "PING"
@@ -882,18 +884,22 @@ function initCustomDataLoader(experimentName){
           originalShowDataHtml();
 
           sendOutputDataToParent(outputdata)
+          if(OUTPUT_TO_CSV){
+            console.log("CSV Output")
+            // Take output data and create the CSV for download 
+            outputDataToCSV(
+              addCollumnsToOutputData(EXPERIMENT_NAME, outputdata), 
+              EXPERIMENT_NAME
+            );
 
-          // Take output data and create the CSV for download 
-          outputDataToCSV(
-            addCollumnsToOutputData(EXPERIMENT_NAME, outputdata), 
-            EXPERIMENT_NAME
-          );
-
-          // Stash the stats. Pass on to another function for creating the CSVs 
-          var automatedStats = calculateAutomatedStats(
-            EXPERIMENT_NAME,
-            outputdata
-          );
+            // Stash the stats. Pass on to another function for creating the CSVs 
+            var automatedStats = calculateAutomatedStats(
+              EXPERIMENT_NAME,
+              outputdata
+            );
+          } else {
+            console.log("Skip CSV Output")
+          }
         } else {
           // DEMO CODE BLOCK 
           demoReportingRoutine(experimentName)

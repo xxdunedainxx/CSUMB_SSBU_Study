@@ -25,13 +25,10 @@
   * Update: February 13th, 2025 - Add 'isDemoSite' flag, and ability to output demo data via 'alert' -- applies to SimpleReactionTime only right now 
   * Update: February 14th, 2025 - Add QR code for main github site info after 'demo'
   * Update: February 15th, 2025 - Remove @Deprecated methods 
-  * Update: February 15th, 2025 - Simple reaction time basic automated stats 
-  * Update: February 15th, 2025 - Posner cue automated stats 
-  * Update: May 13, 2026 - Add Iframe messaging + boolean http arg for disabling CSV output 
 */ 
 
 // Semantic versioning for the app 
-VERSION="1.1.0"
+VERSION="1.0.8"
 
 // Store global vars 
 var GLOBAL_VARIABLE_STASH = {}
@@ -44,9 +41,6 @@ var SimpleReactionTest = 20
 var GoTrials = 20
 var NoGoTrials = 5 
 var isDemoSite = false 
-// Determines if CSV output is desired. 
-// Can be used with 'outputToCsv' http arg to turn off/on
-var OUTPUT_TO_CSV = true 
 
 /*
  * Simple utility function for downloading a document of a particular content type.
@@ -61,31 +55,6 @@ function downloadBlob(content, filename, contentType) {
   pom.href = url;
   pom.setAttribute('download', filename);
   pom.click();
-}
-
-/*
- * Sends an output message to parent window (if this embedded in an iframe)
-*/
-function sendOutputDataToParent(data){
-  console.log("sendOutputDataToParent")
-  // send data to parent
-  window.parent.postMessage({
-    type: "PSYTOOLKIT_RESULT",
-    payload: data
-  }, "*");
-}
-
-/*
- * Once the application is loaded and healthy, send a ping message to parent window
- * Used as a health check by sites that reference this application as an iframe 
-*/
-function sendPingToParent(){
-  // send ping to parent
-  console.log("sendPingToParent")
-  window.parent.postMessage({
-    type: "PSYTOOLKIT_PING",
-    payload: "PING"
-  }, "*");
 }
 
 
@@ -254,12 +223,6 @@ function parseHttpArgs(experimentName){
   var isDemo = selfReferenceURL.searchParams.get("isDemoSite")
   if(isDemo != null){
     isDemoSite = true 
-  }
-
-  var outputToCsv = selfReferenceURL.searchParams.get("outputToCsv")
-  if(outputToCsv != null){
-    OUTPUT_TO_CSV=(outputToCsv != "0")
-    console.log(`OUT CSV: ${OUTPUT_TO_CSV}`)
   }
 
 }
@@ -553,181 +516,54 @@ function countTowardIncorrectOnInvalidCues(CueValidityAsNumber, StatusOfAnswer){
   return parseInt(CueValidityAsNumber) == 0 && parseInt(StatusOfAnswer) != 1  
 }
 
-/**
-  Simple check if its invalid 
-*/
-function isInvalidCue(CueValidity){
-  return CueValidity == "invalid"
-}
-
-/*
-  Checks if status != 1 
-*/
-function isBadStatus(StatusOfAnswer) {
-  return parseInt(StatusOfAnswer) != 1
-}
-
-/*
-  Simple method to check if its an uncued trial 
-*/
-function isUncued(CuedOrUncued){
-  return CuedOrUncued == "uncued"
-}
-
-/*
-  Checks is status == 1 && if cue validity = 1
-*/
-function isValidCueAndGoodStatus(StatusOfAnswer, CueValidityAsNumber){
-  return StatusOfAnswer == 1 && CueValidityAsNumber == 1
-}
-
-/*
-  helper to determine min (peak value for response times typically)
-*/
-function isMinValue(previousMin, currentVal){
-  return previousMin == null || (previousMin > currentVal)
-}
-
-/**
-  Automated stats for the posner cue task 
-
-  * Average response for train/test: when statusofanswer == 1 & cue validity = 1, and status=1 valid = 0
-    - peak values (min) for both 1-1 & 0-1
-    - incorrect responses for 1-1
-    - incorrect response % = status=2/3 for uncued, response = invalid 
-    - count # of invalid 
-*/
 function calculatePosnerCueStats(data){
-
   var dataSerialized = serializeOutputDataToTable(data, "PosnerCue")
+  // Cue block training and testing means (response time for CueValidityAsNumber=1 && StatusOfAnswer=1)
+  var totalCues = 0
+  var sumCueResponseTimes = 0
 
-  // TRAIN Status = 1, cue valid = 1, 
-  var totalNumberTrainingCorrectResponseAndValidCue = 0
-  var totalResponeTimesTrainingCorrectResponseAndValidCue = 0
+  var totalInvalidCues = 0 
+  var sumInvalidCueResponseTimes = 0 
 
-  // TRAIN Status = 1,  valid = 0
-  var totalNumberTrainingCorrectResponseAndInvalidCue = 0
-  var totalResponeTimesTrainingCorrectResponseAndInvalidCue = 0
-
-  // TEST Status = 1, cue valid = 1, 
-  var totalNumberTestingCorrectResponseAndValidCue = 0
-  var totalResponeTimesTestingCorrectResponseAndValidCue = 0
-
-  // TEST Status = 1,  valid = 0
-  var totalNumberTestingCorrectResponseAndInvalidCue = 0
-  var totalResponeTimesTestingCorrectResponseAndInvalidCue = 0
-
-  // # Of stats=2/3 for uncued, response = invalid 
-  // used to calculate percentage later 
-  var incorrectResponseForUncuedTraining = 0
-  var incorrectResponseForUncuedTesting = 0
-
-  // Simple sum 
-  var totalInvalidCuesTesting = 0 
-  var totalInvalidCuesTraining = 0 
-
-  // Peak response time for train v test status=1, valid = 1/0
-  var peakTrainingValueValidCues=null
-  var peakTestingValueValidCues=null
-
-  var peakTrainingValueInvalidCues=null
-  var peakTestingValueInvalidCues=null
-
-
+  var totalIncorrectOnInvalidCues = 0 
   console.log(dataSerialized)
-
   for(var i = 0; i < dataSerialized["ResponsetimeMS"].length; i++){
-    // Training set processing 
-    if(dataSerialized["TestOrTraining"][i] == "cueingBlockTraining"){
-      if(isInvalidCue(dataSerialized["CueValidity"][i])){
-        totalInvalidCuesTraining +=1 
+    console.log(dataSerialized['CueValidityAsNumber'][i])
+    console.log(dataSerialized['StatusOfAnswer'][i])
 
-        if(isUncued(dataSerialized["CuedOrUncued"][i]) && isBadStatus(dataSerialized["StatusOfAnswer"][i])){
-          incorrectResponseForUncuedTraining+=1
-        }
-
-        // Check if its the peak for training/invalid
-        if(isMinValue(peakTrainingValueInvalidCues,parseInt(dataSerialized["ResponsetimeMS"][i]))){
-          peakTrainingValueInvalidCues = parseInt(dataSerialized["ResponsetimeMS"][i])
-        }
-      } else {
-        // check peak for training/valid
-        if(isMinValue(peakTrainingValueValidCues,parseInt(dataSerialized["ResponsetimeMS"][i]))){
-          peakTrainingValueValidCues = parseInt(dataSerialized["ResponsetimeMS"][i])
-        }
-      }
-
-      if(isValidCueAndGoodStatus(parseInt(dataSerialized["StatusOfAnswer"][i]), 
-          parseInt(dataSerialized["CueValidityAsNumber"][i]))){
-        // TRAINING
-        totalNumberTrainingCorrectResponseAndValidCue+=1
-        totalResponeTimesTrainingCorrectResponseAndValidCue+=parseInt(
-          dataSerialized["ResponsetimeMS"][i]
-        )
-      } else {
-        totalNumberTrainingCorrectResponseAndInvalidCue+=1
-        totalResponeTimesTrainingCorrectResponseAndInvalidCue+=parseInt(
-          dataSerialized["ResponsetimeMS"][i]
-        )
-      }
-
+    var responseTimeParsed = parseFloat(dataSerialized["ResponsetimeMS"][i])
+    console.log(responseTimeParsed)
+    if(countTowardCues(dataSerialized['CueValidityAsNumber'][i],dataSerialized['StatusOfAnswer'][i])){
+        console.log("cue count")
+        totalCues+=1
+        sumCueResponseTimes+=responseTimeParsed
+    } else if(countTowardInvalidCues(dataSerialized['CueValidityAsNumber'][i],dataSerialized['StatusOfAnswer'][i])){
+        console.log("Count invalid cue")
+        totalInvalidCues+=1
+        sumInvalidCueResponseTimes+=responseTimeParsed
+    } else if(countTowardIncorrectOnInvalidCues(dataSerialized['CueValidityAsNumber'][i],dataSerialized['StatusOfAnswer'][i])){
+        totalIncorrectOnInvalidCues+=1
     } else {
-      // Testing set processing 
-      if(isInvalidCue(dataSerialized["CueValidity"][i])){
-          totalInvalidCuesTesting +=1 
-          if(isUncued(dataSerialized["CuedOrUncued"][i]) && isBadStatus(dataSerialized["StatusOfAnswer"][i])){
-            incorrectResponseForUncuedTesting+=1
-          }
-
-          if(isMinValue(peakTestingValueInvalidCues,parseInt(dataSerialized["ResponsetimeMS"][i]))){
-            peakTestingValueInvalidCues = parseInt(dataSerialized["ResponsetimeMS"][i])
-          }
-      } else {
-        // check peak for testing/valid
-        if(isMinValue(peakTestingValueValidCues,parseInt(dataSerialized["ResponsetimeMS"][i]))){
-          peakTestingValueValidCues = parseInt(dataSerialized["ResponsetimeMS"][i])
-        }
-      }
-
-      if(isValidCueAndGoodStatus(parseInt(dataSerialized["StatusOfAnswer"][i]), parseInt(dataSerialized["CueValidityAsNumber"][i]))){
-        // Testing
-        totalNumberTestingCorrectResponseAndValidCue+=1
-        totalResponeTimesTestingCorrectResponseAndValidCue+=parseInt(
-          dataSerialized["ResponsetimeMS"][i]
-        )
-      } else {
-        totalNumberTestingCorrectResponseAndInvalidCue+=1
-        totalResponeTimesTestingCorrectResponseAndInvalidCue+=parseInt(
-          dataSerialized["ResponsetimeMS"][i]
-        )
-      }
+      console.log("skip")
     }
   }
 
-
+  console.log(sumCueResponseTimes)
+  console.log(sumInvalidCueResponseTimes)
 
   var finalData = {
-    "avgValidCueResponseTimeTraining": (totalResponeTimesTrainingCorrectResponseAndValidCue / totalNumberTrainingCorrectResponseAndValidCue),
-    "avgValidCueResponseTimeTesting": (totalResponeTimesTestingCorrectResponseAndValidCue / totalNumberTestingCorrectResponseAndValidCue),
-    "avgInvalidCueResponseTimeTraining": (totalResponeTimesTrainingCorrectResponseAndInvalidCue / totalNumberTrainingCorrectResponseAndInvalidCue),
-    "avgInvalidCueResponseTimeTesting": (totalResponeTimesTestingCorrectResponseAndInvalidCue / totalNumberTestingCorrectResponseAndInvalidCue),
-    "totalInvalidCuesTesting": totalInvalidCuesTesting,
-    "totalInvalidCuesTraining":totalInvalidCuesTraining,
-    "percentageMissedInvalidCuesTraining": (incorrectResponseForUncuedTraining / totalInvalidCuesTraining),
-    "percentageMissedInvalidCuesTesting": (incorrectResponseForUncuedTesting/ totalInvalidCuesTesting),
-    "peakTestingValueValidCues": peakTestingValueValidCues,
-    "peakTestingValueInvalidCues": peakTestingValueInvalidCues,
-    "peakTrainingValueInvalidCues": peakTrainingValueInvalidCues,
-    "peakTrainingValueValidCues": peakTrainingValueValidCues
+    "avgValidCueResponseTime": (sumCueResponseTimes / totalCues),
+    "avgInvalidCueResponseTime": (sumInvalidCueResponseTimes / totalInvalidCues),
+    "percentageMissedInvalidCues": (totalIncorrectOnInvalidCues / totalInvalidCues)
   }
 
 
-  var csv = "avgValidCueResponseTimeTraining,avgValidCueResponseTimeTesting,avgInvalidCueResponseTimeTraining,avgInvalidCueResponseTimeTesting,totalInvalidCuesTesting,totalInvalidCuesTraining,percentageMissedInvalidCuesTraining,percentageMissedInvalidCuesTesting,peakTestingValueValidCues,peakTestingValueInvalidCues,peakTrainingValueInvalidCues,peakTrainingValueValidCues\n"
-  csv    += `${finalData["avgValidCueResponseTimeTraining"]},${finalData["avgValidCueResponseTimeTesting"]},${finalData["avgInvalidCueResponseTimeTraining"]},${finalData["avgInvalidCueResponseTimeTesting"]},${finalData["totalInvalidCuesTesting"]},${finalData["totalInvalidCuesTraining"]},${finalData["percentageMissedInvalidCuesTraining"]},${finalData["percentageMissedInvalidCuesTesting"]},${finalData["peakTestingValueValidCues"]},${finalData["peakTestingValueInvalidCues"]},${finalData["peakTrainingValueInvalidCues"]},${finalData["peakTrainingValueValidCues"]}` 
+  var csv = "avgValidCueResponseTime, avgInvalidCueResponseTime, percentageMissedInvalidCues\n"
+  csv    += `${finalData["avgValidCueResponseTime"]},${finalData["avgInvalidCueResponseTime"]},${finalData["percentageMissedInvalidCues"]}` 
 
   downloadBlob(
       csv,
-      generateOutputFileName("PosnerCueStats"),
+      generateOutputFileName("PosnerStats"),
       'text/csv;charset=utf-8;'
   )
 
@@ -889,23 +725,17 @@ function initCustomDataLoader(experimentName){
         if(!isDemo()){
           originalShowDataHtml();
 
-          sendOutputDataToParent(outputdata)
-          if(OUTPUT_TO_CSV){
-            console.log("CSV Output")
-            // Take output data and create the CSV for download 
-            outputDataToCSV(
-              addCollumnsToOutputData(EXPERIMENT_NAME, outputdata), 
-              EXPERIMENT_NAME
-            );
+          // Take output data and create the CSV for download 
+          outputDataToCSV(
+            addCollumnsToOutputData(EXPERIMENT_NAME, outputdata), 
+            EXPERIMENT_NAME
+          );
 
-            // Stash the stats. Pass on to another function for creating the CSVs 
-            var automatedStats = calculateAutomatedStats(
-              EXPERIMENT_NAME,
-              outputdata
-            );
-          } else {
-            console.log("Skip CSV Output")
-          }
+          // Stash the stats. Pass on to another function for creating the CSVs 
+          var automatedStats = calculateAutomatedStats(
+            EXPERIMENT_NAME,
+            outputdata
+          );
         } else {
           // DEMO CODE BLOCK 
           demoReportingRoutine(experimentName)
@@ -932,9 +762,6 @@ function loadZehPlugin(experimentName) {
 
   // Add our custom data loader callback 
   initCustomDataLoader(experimentName);
-
-  // Let parent windows know its ready :) 
-  sendPingToParent();
 }
 </script>
 <script>
