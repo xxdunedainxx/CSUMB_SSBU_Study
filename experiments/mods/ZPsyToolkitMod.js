@@ -22,10 +22,11 @@
   * Update: February 15th, 2025 - Remove @Deprecated methods 
   * Update: February 15th, 2025 - Simple reaction time basic automated stats 
   * Update: February 15th, 2025 - Posner cue automated stats 
+  * Update: May 13, 2026 - Add Iframe messaging + boolean http arg for disabling CSV output 
 */ 
 
 // Semantic versioning for the app 
-VERSION="1.0.9"
+VERSION="1.1.0"
 
 // Store global vars 
 var GLOBAL_VARIABLE_STASH = {}
@@ -38,6 +39,9 @@ var SimpleReactionTest = 20
 var GoTrials = 20
 var NoGoTrials = 5 
 var isDemoSite = false 
+// Determines if CSV output is desired. 
+// Can be used with 'outputToCsv' http arg to turn off/on
+var OUTPUT_TO_CSV = true 
 
 /*
  * Simple utility function for downloading a document of a particular content type.
@@ -52,6 +56,29 @@ function downloadBlob(content, filename, contentType) {
   pom.href = url;
   pom.setAttribute('download', filename);
   pom.click();
+}
+
+/*
+ * Sends an output message to parent window (if this embedded in an iframe)
+*/
+function sendOutputDataToParent(data){
+  // send data to parent
+  window.parent.postMessage({
+    type: "PSYTOOLKIT_RESULT",
+    payload: data
+  }, "*");
+}
+
+/*
+ * Once the application is loaded and healthy, send a ping message to parent window
+ * Used as a health check by sites that reference this application as an iframe 
+*/
+function sendPingToParent(){
+  // send data to parent
+  window.parent.postMessage({
+    type: "PSYTOOLKIT_PING",
+    payload: "PING"
+  }, "*");
 }
 
 
@@ -220,6 +247,11 @@ function parseHttpArgs(experimentName){
   var isDemo = selfReferenceURL.searchParams.get("isDemoSite")
   if(isDemo != null){
     isDemoSite = true 
+  }
+
+  var outputToCsv = selfReferenceURL.searchParams.get("outputToCsv")
+  if(outputToCsv != null){
+    OUTPUT_TO_CSV=(outputToCsv != "0")
   }
 
 }
@@ -849,6 +881,8 @@ function initCustomDataLoader(experimentName){
         if(!isDemo()){
           originalShowDataHtml();
 
+          sendOutputDataToParent(outputdata)
+
           // Take output data and create the CSV for download 
           outputDataToCSV(
             addCollumnsToOutputData(EXPERIMENT_NAME, outputdata), 
@@ -886,4 +920,7 @@ function loadZehPlugin(experimentName) {
 
   // Add our custom data loader callback 
   initCustomDataLoader(experimentName);
+
+  // Let parent windows know its ready :) 
+  sendPingToParent();
 }
